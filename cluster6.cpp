@@ -230,6 +230,21 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI
 	return lik;
 }
 
+void calc_logit_F(const Vector<double> f, Vector<mydouble> &F)
+{
+  	/* Assumes F is one larger than f */
+	double fs = 0;
+	for (int i = 0; i < f.size(); i++)
+	{
+		fs += exp(f[i]);
+		F[i].setlog(f[i]);		///< equivalent to F[i] = exp(f[i])
+  	}
+	F[f.size()].setlog(0); 			///< equivalent to F[f.size()] = 1
+	fs += 1;
+	for (int i = 0; i < F.size(); i++)
+ 		F[i] /= fs;
+}
+
 /* This version uses the clonal frame version of the likelihood */
 void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename) {
 	int i, j, h = human.nrows();
@@ -307,9 +322,11 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	}
 	calc_R(r[use],R[use]);
 
-	Vector<double> ALPHA(ng,alpha);					//	Dirichlet hyperparameters of assignment proportions
-	Vector<mydouble> f(ng+1,alpha), f_prime(ng+1);	//	The probability of source
-	Vector<mydouble> F(ng), F_prime(ng);
+	Vector<double> ALPHA(ng-1, 0);			///< Mean of assignment proportion (logit scale)
+	Vector<double> TAU(ng-1, 10);			///< Variance of assignment proportion (logit scale)
+	Vector<double> f(ng-1,0), f_prime(ng-1);	///< F values on the logit scale
+	Vector<mydouble> F(ng), F_prime(ng);		///< Probability of source
+
 	int h = human.nrows();
 	Vector<double> pLIKg(ng);						//	storage for g Gibbs step (case 4)
 
@@ -361,9 +378,10 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	for(iter=0;iter<niter;iter++) {
 		if(iter>=burnin && (iter-burnin)%inc==0) {
 			/* Draw our hyper-prior parameters */
-			for(j=0;j<ng;j++) f[j] = ran.gamma(1.,ALPHA[j]);		// Draw F from the prior
+			for(j=0; j < f.size(); j++)
+				f[j] = ran.normal(ALPHA[j], TAU[j]);
 			/* Calculate our F's */
-			calc_F(f,F);
+			calc_logit_F(f,F);
 
 			/* Compute likelihood */
 			mydouble flik = calc_lik6(LIKHI[use],A[use],a[use],b[use],R[use],F);
@@ -380,7 +398,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 					if(id2==id1) id2 = f.size()-1;
 					f_prime = f;
 					SWAP(f_prime[id1],f_prime[id2]);
-					calc_F(f_prime,F_prime);
+					calc_logit_F(f_prime,F_prime);
 					logalpha = 1.0;
 					// Prior ratio equals 1 because prior is symmetric
 					// Symmetric proposal so Hastings ratio equals 1
@@ -398,14 +416,15 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 					}
 					break;
 				}
-				case 3: {// update f (II. Using a Metropolis-Hastings step with log-normal proposal)
-					int id = ran.discrete(0,ng-1);
+				case 3: {// update f (II. Using a Metropolis-Hastings step with normal proposal)
+					int id = ran.discrete(0,f.size()-1);
 					f_prime = f;
-					f_prime[id].setlog(ran.normal(f[id].LOG(),sigma_f));
-					calc_F(f_prime,F_prime);
+					f_prime[id] = ran.normal(f[id],sigma_f);
+					calc_logit_F(f_prime,F_prime);
 					// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f) 
-					logalpha.setlog(f[id].todouble()-f_prime[id].todouble());
-					logalpha *= (f_prime[id]/f[id])^(alpha);
+					// Proposal is symmetric, so this drops down to the prior. Prior is 
+					// exp((f^2-f'^2)/(2*tau^2))
+					logalpha.setlog((f[id]*f[id]-f_prime[id]*f_prime[id])/(2*TAU[id]*TAU[id]));
 					// Likelihood ratio
 					mydouble lik_ratio = calc_lik6(LIKHI[use],LIKHI[notuse],F_prime);
 
