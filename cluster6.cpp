@@ -359,19 +359,25 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	const int inc = MAX((int)floor((double)niter*.9/100.),1);
 	const int burnin = (int)floor((double)niter*.1);
 	for(iter=0;iter<niter;iter++) {
-		if(iter>=burnin && (iter-burnin)%inc==0) {	// Do a round of F's
+		if(iter>=burnin && (iter-burnin)%inc==0) {
+			/* Draw our hyper-prior parameters */
 			for(j=0;j<ng;j++) f[j] = ran.gamma(1.,ALPHA[j]);		// Draw F from the prior
+			/* Calculate our F's */
 			calc_F(f,F);
+
+			/* Compute likelihood */
 			mydouble flik = calc_lik6(LIKHI[use],A[use],a[use],b[use],R[use],F);
 
+			/* Side chain */
 			for(fiter=0;fiter<fniter;fiter++) {
-				move = (ran.U()<.05) ? 2 : 3;
+				move = (ran.U()<.05) ? 2 : 3; /* Switching likelihood */
 				switch(move) {
-				case 2: {// update f (switching move)
-					move = 2;
-					int id1 = ran.discrete(0,ng-1);
-					int id2 = ran.discrete(0,ng-2);
-					if(id2==id1) id2 = ng-1;
+				case 2: {
+					/* update f_logit (switching move)
+					   choose two values to switch, ensuring they're different */
+					int id1 = ran.discrete(0,f.size()-1);
+					int id2 = ran.discrete(0,f.size()-2);
+					if(id2==id1) id2 = f.size()-1;
 					f_prime = f;
 					SWAP(f_prime[id1],f_prime[id2]);
 					calc_F(f_prime,F_prime);
@@ -397,7 +403,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 					f_prime = f;
 					f_prime[id].setlog(ran.normal(f[id].LOG(),sigma_f));
 					calc_F(f_prime,F_prime);
-					// Prior-Hastings ratio
+					// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f) 
 					logalpha.setlog(f[id].todouble()-f_prime[id].todouble());
 					logalpha *= (f_prime[id]/f[id])^(alpha);
 					// Likelihood ratio
