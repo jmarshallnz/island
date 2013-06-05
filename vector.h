@@ -123,8 +123,14 @@ public:
 		if(pos>=protected_size) error("Vector::operator[](int pos): pos>=size()");
 		return element[pos];
 	};
+	/*Subscript operator*/inline const T& operator[](int pos) const{
+		if(pos<0) error("Vector::operator[](int pos): pos<0");
+		if(pos>=protected_size) error("Vector::operator[](int pos): pos>=size()");
+		return element[pos];
+	};
 #else
 	/*Subscript operator*/inline T& operator[](int pos){return element[pos];};
+	/*Subscript operator*/inline const T& operator[](int pos) const{return element[pos];};
 #endif
 };
 };
