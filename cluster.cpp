@@ -91,11 +91,14 @@ void Cluster::open_all(const char* filename) {
 	// Read in the raw data file
 	tsv TSV;
 	TSV.read(filename);
+
 	// Count the number of groups and loci
 	nloc = TSV.data.ncols()-2;
-	if(!(nloc>0)) error("There must be a positive number of loci");
+	if(!(nloc>0))
+		error("There must be a positive number of loci");
 	ng = TSV.n_values()[nloc+1]-1;
 	if(!(ng>=2)) error("There must be at least one target and two source pops");
+
 	// Convert to integers
 	Matrix<int> isolate(TSV.data.nrows(),TSV.data.ncols());
 	int i,j;
@@ -104,6 +107,7 @@ void Cluster::open_all(const char* filename) {
 			isolate[i][j] = atoi(TSV.data[i][j].c_str());
 		}
 	}
+
 	// Do some preliminary passes
 	int maxST = -1;			///< maximum ST
 	Vector<int> maxallele(nloc,-1);	///< maximum allele number for each locus
@@ -140,6 +144,7 @@ void Cluster::open_all(const char* filename) {
 		}
 		else ++nhuman;
 	}
+
 	// Check that all sequence labels are unique and mutually exclusive
 	// - this is a test for potential problems in the data file
 	Matrix<int> aprofile(MIN(maxST,isolate.nrows()),nloc+1,-1);

@@ -322,13 +322,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	}
 	calc_R(r[use],R[use]);
 
-	Vector<double> ALPHA(ng-1, 0);			///< Mean of assignment proportion (logit scale)
-	Vector<double> TAU(ng-1, 10);			///< Variance of assignment proportion (logit scale)
-	Vector<double> f(ng-1,0), f_prime(ng-1);	///< F values on the logit scale
-	Vector<mydouble> F(ng), F_prime(ng);		///< Probability of source
-
 	int h = human.nrows();
-	Vector<double> pLIKg(ng);						//	storage for g Gibbs step (case 4)
 
 	/* Storage for likelihoods */
 	Vector< Matrix<mydouble> > LIKHI(2);
@@ -349,6 +343,14 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	double sigma_a = 0.5;							//	factor for normal proposal in MH change of a (case 1)
 	double sigma_f = 0.5;							//	factor for normal proposal in MH change of f (case 3)
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
+
+	/* Source probabilities */
+	Vector<double> ALPHA(ng-1, 0);			///< Mean of assignment proportion (logit scale)
+	Vector<double> TAU(ng-1, 1);			///< Std dev of assignment proportion (logit scale)
+	Vector<double> f(ng-1,0), f_prime(ng-1);	///< F values on the logit scale
+	Vector<mydouble> F(ng), F_prime(ng);		///< Probability of source
+
+	Vector<double> pLIKg(ng);						//	storage for g Gibbs step (case 4)
 
 	/* Output to file */
 	char tab = '\t';

@@ -48,7 +48,7 @@ public:
 	bool ****same;
 	mydouble one;
 	bool *****ksame;
-	Vector<int> hid; //?????????????????
+	Vector<int> hid;	///< previous identical human for saving likelihood computation
 	Vector<int> G;
 	Matrix<mydouble> simLIK;
 	Vector<int> identicals;
