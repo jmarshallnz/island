@@ -86,26 +86,36 @@ double Cluster::FST(double &HS, double &HT) {
 	return 1. - HS/HT;
 }
 
-void Cluster::open_all(const char* filename) {
+void Cluster::open_all(const char* filesource, const char *filehuman) {
 	init = true;
 	// Read in the raw data file
-	tsv TSV;
-	TSV.read(filename);
+	tsv TSVsource, TSVhuman;
+	TSVsource.read(filesource);
+	TSVhuman.read(filehuman);
 
 	// Count the number of groups and loci
-	nloc = TSV.data.ncols()-2;
+	nloc = TSVsource.data.ncols()-2;
 	if(!(nloc>0))
 		error("There must be a positive number of loci");
-	ng = TSV.n_values()[nloc+1]-1;
+	if (nloc != TSVhuman.data.ncols()-2)
+		error("Not the same number of loci in humans + sources");
+	ng = TSVsource.n_values()[nloc+1];
 	if(!(ng>=2)) error("There must be at least one target and two source pops");
 
 	// Convert to integers
-	Matrix<int> isolate(TSV.data.nrows(),TSV.data.ncols());
+	Matrix<int> isolate(TSVsource.data.nrows()+TSVhuman.data.nrows(),TSVsource.data.ncols());
 	int i,j;
-	for(i=0;i<TSV.data.nrows();i++) {
-		for(j=0;j<TSV.data.ncols();j++) {
-			isolate[i][j] = atoi(TSV.data[i][j].c_str());
+	for(i=0;i<TSVsource.data.nrows();i++) {
+		for(j=0;j<TSVsource.data.ncols();j++) {
+			isolate[i][j] = atoi(TSVsource.data[i][j].c_str());
 		}
+	}
+	for(i=0;i<TSVhuman.data.nrows();i++) {
+		for(j=0;j<TSVhuman.data.ncols();j++) {
+			isolate[i+TSVsource.data.nrows()][j] = atoi(TSVhuman.data[i][j].c_str());
+		}
+		// set group
+		isolate[i+TSVsource.data.nrows()][nloc+1] = 0;
 	}
 
 	// Do some preliminary passes
@@ -115,27 +125,27 @@ void Cluster::open_all(const char* filename) {
 	size = Vector<int>(ng+1,0);	///< size[0:(ng-1)] is total in each source group, size[ng] is total in source groups
 	for(i=0;i<isolate.nrows();i++) {
 		if(!(isolate[i][0]>=0)) {
-			cout << "Sequence " << i+1 << " column 1 reads " << TSV.data[i][0] << endl;
+			cout << "Sequence " << i+1 << " column 1 reads " << TSVsource.data[i][0] << endl;
 			error("Sequences should be labelled with a non-negative integer");
 		}
 		if(isolate[i][0]>10*isolate.nrows()) {
-//			cout << "Sequence " << i+1 << " column 1 reads " << TSV.data[i][0] << endl;
+//			cout << "Sequence " << i+1 << " column 1 reads " << TSVsource.data[i][0] << endl;
 //			cout << "WARNING: this integer (" << isolate[i][0] << ") is large - possible mistake?" << endl;
 		}
 		if(isolate[i][0]>maxST) maxST = isolate[i][0];
 		for(j=1;j<=nloc;j++) {
 			if(!(isolate[i][j]>=0)) {
-				cout << "Sequence " << i+1 << " column " << j+1 << " reads " << TSV.data[i][j] << endl;
+				cout << "Sequence " << i+1 << " column " << j+1 << " reads " << TSVsource.data[i][j] << endl;
 				error("Alleles must be given non-negative integer labels");
 			}
 			if(isolate[i][j]>10*isolate.nrows()) {
-	//			cout << "Sequence " << i+1 << " column " << j+1 << " reads " << TSV.data[i][j] << endl;
+	//			cout << "Sequence " << i+1 << " column " << j+1 << " reads " << TSVsource.data[i][j] << endl;
 //				cout << "WARNING: this integer (" << isolate[i][j] << ") is large - possible mistake?" << endl;
 			}
 			if(isolate[i][j]>maxallele[j-1]) maxallele[j-1] = isolate[i][j];
 		}
 		if(!(isolate[i][nloc+1]>=0 && isolate[i][nloc+1]<=ng)) {
-			cout << "Sequence " << i+1 << " final column reads " << TSV.data[i][nloc+1] << endl;
+			cout << "Sequence " << i+1 << " final column reads " << TSVsource.data[i][nloc+1] << endl;
 			error("Groups must be numbered from 0 (target pop) to the number of source pops");
 		}
 		if(isolate[i][nloc+1]>0) {
@@ -206,15 +216,23 @@ void Cluster::open_all(const char* filename) {
 //////////////////////////////////////////////////////////////////////////////////////////////	
 	// Create the matrix of human isolates
 	human.resize(nhuman,nloc);	///< human loci for each case
+	htime.resize(nhuman);		///< human times for each case
 	int ih;
+	ntime = 0;
 	for(i=0,ih=0;i<isolate.nrows();i++) {
 		if(isolate[i][nloc+1]==0) {
 			for(j=0;j<nloc;j++) {
 				human[ih][j] = isolate[i][j+1];
 			}
+			htime[ih] = atoi(TSVhuman.data[ih][nloc+1].c_str());
+			if (htime[ih] > ntime)
+				ntime = htime[ih];
 			++ih;
 		}
 	}
+	if (ntime != TSVhuman.n_values()[nloc+1]-1)
+		error("Human times should be sequential");
+	cout << "Found " << ntime << "times" << endl;
 	if(ih!=nhuman) error("Book-keeping problem identifying target isolates");
 //////////////////////////////////////////////////////////////////////////////////////////////
 	// Count the number of non-human isolates in each group

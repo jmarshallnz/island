@@ -39,6 +39,9 @@ public:
 	double A;
 
 	Matrix<int> human;				// those sampled from humans
+	Vector<int> htime;	///< mapping of human time
+	int         ntime;	///< total times
+
 	Vector< Matrix<mydouble> > ksl2;
 
 	mydouble punique;
@@ -63,7 +66,7 @@ public:
 	}
 	void open(const char* filename);
 	void open_human(const char* filename);
-	void open_all(const char* filename);
+	void open_all(const char* filesources, const char *filehuman);
 	void mcmc(const double th0, const double rh0, const double rhs0, const double alpha, Random &ran, const int niter, const int thin, const char* filename);
 	void mcmc(const double th0, const double rh0, const double rhs0, const double alpha, Random &ran, const int niter, const int thin, ofstream& out);
 	void mcmc2(const double th0, const double rh0, const double rhs0, const double alpha, Random &ran, const int niter, const int thin, const char* filename);
