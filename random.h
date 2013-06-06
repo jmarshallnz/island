@@ -598,7 +598,7 @@ public:
 		/*	Simulate MultiNormal(mu, Sigma), where Sigma is the variance-covariance matrix.
 			Compute the Cholesky decomposition Sigma = L . L', where ' denotes the transpose.
 			Generate a vector of i.i.d. standard normal variates Z. Then
-					M = L' . Z + mu
+					M = L . Z + mu
 			has the desired distribution.*/
 		for(i=0;i<n;i++) {
 			MN[i] = mu[i];
@@ -624,7 +624,7 @@ public:
 		/*	Simulate MultiNormal(mu, Sigma), where Sigma is the variance-covariance matrix.
 			Compute the Cholesky decomposition Sigma = L . L', where ' denotes the transpose.
 			Generate a vector of i.i.d. standard normal variates Z. Then
-					M = L' . Z + mu
+					M = L . Z + mu
 			has the desired distribution.*/
 		for(i=0;i<n;i++) {
 			MN[i] = mu[i];
