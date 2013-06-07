@@ -230,7 +230,8 @@ void Cluster::open_all(const char* filesource, const char *filehuman) {
 			++ih;
 		}
 	}
-	if (ntime != TSVhuman.n_values()[nloc+1]-1)
+	ntime++;
+	if (ntime != TSVhuman.n_values()[nloc+1])
 		error("Human times should be sequential");
 	cout << "Found " << ntime << "times" << endl;
 	if(ih!=nhuman) error("Book-keeping problem identifying target isolates");

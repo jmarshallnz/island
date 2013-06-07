@@ -200,7 +200,7 @@ void Cluster::precalc() {
 	simMLST = Matrix<int>(h,nloc);
 }
 
-mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Vector<mydouble> &F) {
+mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Matrix<mydouble> &F) {
 #if defined(_FLAT_LIKELIHOOD)
 	return mydouble(1.0);
 #endif
@@ -208,6 +208,7 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<m
 	const int h = LIKHI.nrows();
 	mydouble lik = 1.0;
 	for(i=0;i<h;i++) {
+		const int t = htime[i];
 		if (htid[i] < i) {
 			/* optimisation: if human+time is identical, copy across the combine with F stage */
 			const int ii = htid[i];
@@ -230,7 +231,7 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<m
 			/* combine with F */
 			LIKHI[i][ng] = 0.0;
 			for (j = 0; j < ng; j++) {
-				LIKHI[i][ng] += F[j] * LIKHI[i][j];
+				LIKHI[i][ng] += F[t][j] * LIKHI[i][j];
 			}
 		}
 		lik *= LIKHI[i][ng];
@@ -242,42 +243,46 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<m
   i.e. the individual within-group likelihoods will be the same, so just multiply
        up by the group likelihood (F)
  */
-mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI_notuse, Vector<mydouble> &F_prime) {
+mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble> &likelihood_prime, const Matrix<mydouble> &F_prime) {
 #if defined(_FLAT_LIKELIHOOD)
 	return mydouble(1.0);
 #endif
-	int i,j;
-	const int h = LIKHI_use.nrows();
+	const int h = likelihood.nrows();
 	mydouble lik = 1.0;
-	for(i=0;i<h;i++) {
+
+	for(int i = 0; i < h; i++) {
+		const int t = htime[i];
 		if (htid[i] < i) {
 			/* optimisation: if human+time is identical, copy across the combine with F stage */
 			const int ii = htid[i];
-			LIKHI_notuse[i][ng] = LIKHI_notuse[ii][ng];
+			likelihood_prime[i] = likelihood_prime[ii];
 		} else {
-			LIKHI_notuse[i][ng] = 0.0;
-			for(j=0;j<ng;j++) {
-				LIKHI_notuse[i][ng] += F_prime[j] * LIKHI_use[i][j];
+			likelihood_prime[i] = 0.0;
+			for(int j = 0; j < ng ; j++) {
+				likelihood_prime[i] += F_prime[t][j] * likelihood[i][j];
 			}
 		}
-		lik *= LIKHI_notuse[i][ng] / LIKHI_use[i][ng];
+		lik *= likelihood_prime[i] / likelihood[i][ng];
 	}
+
 	return lik;
 }
 
-void calc_logit_F(const Vector<double> f, Vector<mydouble> &F)
+void calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
 {
   	/* Assumes F is one larger than f */
-	double fs = 0;
-	for (int i = 0; i < f.size(); i++)
-	{
-		fs += exp(f[i]);
-		F[i].setlog(f[i]);		///< equivalent to F[i] = exp(f[i])
-  	}
-	F[f.size()].setlog(0); 			///< equivalent to F[f.size()] = 1
-	fs += 1;
-	for (int i = 0; i < F.size(); i++)
- 		F[i] /= fs;
+	for (int t = 0; t < f.nrows(); t++) {
+		double fs = 0;
+		for (int j = 0; j < f.ncols(); j++) {
+			fs += exp(f[t][j]);
+			F[t][j].setlog(f[t][j]);	///< equivalent to F[t][j] = exp(f[t][j])
+  		}
+		F[t][f.ncols()].setlog(0); 		///< equivalent to F[t][f.ncols()] = 1
+		fs += 1;
+		for (int j = 0; j < F.ncols(); j++) {
+			F[t][j] /= fs;
+		}
+	}
 }
 
 /* This version uses the clonal frame version of the likelihood */
@@ -298,10 +303,116 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	out << tab << "logalpha";
 	out << tab << "move";
 	out << endl;
+	/* header for F file */
 	o3 << "iter";
-	for(i=0;i<ng;i++) o3 << tab << "f" << i;
+	for (int t = 0; t < ntime; t++) {
+		for(i=0;i<ng;i++) {
+			o3 << tab << "t" << t << "f" << i;
+		}
+	}
+	for (int i = 0; i < ng-1; i++) o3 << tab << "ALPHA" << i;
+	for (int i = 0; i < ng-1; i++) o3 << tab << "TAU" << i;
 	o3 << endl;
 	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o2,o3);
+}
+
+void Cluster::init_priors(Vector<double> &ALPHA, Vector<double> &TAU, Random &ran)
+{
+	/* Priors */
+	const double Alpha_mu = 0, Alpha_prec = 0.1;
+	const double Tau_shape = 0.1, Tau_rate = 0.1;
+
+	/* assumes ALPHA.size() == TAU.size() */
+	for(int j = 0; j < ALPHA.size(); j++) {
+		ALPHA[j] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
+		TAU[j]   = Tau_shape/Tau_rate; 	//ran.gamma(1/Tau_rate, Tau_shape);
+	}
+}
+
+void Cluster::init_f(Matrix<double> &f, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran)
+{
+	/* f[t][i] ~ Normal(ALPHA[j], TAU[j]) */
+	for (int t = 0; t < f.nrows(); t++) {
+		for (int j = 0; j < f.ncols(); j++) {
+			f[t][j] = 0; //ran.normal(ALPHA[j], 1/sqrt(TAU[j]));
+		}
+	}
+}
+
+void Cluster::update_priors(Vector<double> &ALPHA, Vector<double> &TAU, const Matrix<double> &f, Random &ran)
+{
+	/* Priors */
+	const double Alpha_mu = 0, Alpha_prec = 0.1;
+	const double Tau_shape = 0.1, Tau_rate = 0.1;
+
+	/* assumes ALPHA.size() == TAU.size() */
+	for (int i = 0; i < ALPHA.size(); i++) {
+		/* update ALPHA[i]
+		 posterior params will be (Alpha_mu*Alpha_prec + TAU[i]*sum(F[][i])) / (Alpha_prec + n*TAU[i])
+		 */
+		double s = 0;
+		double ss = 0;
+		for (int t = 0; t < f.nrows(); t++) {
+			s += f[t][i];
+			ss += f[t][i]*f[t][i];
+		}
+		double prec = Alpha_prec + ntime*TAU[i];
+		double mu = (Alpha_mu*Alpha_prec + s*TAU[i]) / prec;
+		ALPHA[i] = ran.normal(mu, 1/sqrt(prec)); /* ran.normal takes sd=1/sqrt(precision) */
+		/* update TAU[i]
+		 posterior params will be (Tau_a + n/2, Tau_b + sum(F-mu)^2/2)
+		 */
+		double shape = Tau_shape + ntime/2;
+		double rate = Tau_rate + (ntime*ss-s*s)/(2*ntime);
+		TAU[i] = ran.gamma(1/rate, shape);
+	}
+}
+
+void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran)
+{
+	static int accept_rate = 0;
+	static int reject_rate = 0;
+
+	/* MH proposal parameters */
+	const double sigma_f = 1.0;
+
+	/* storage for results */
+	Matrix<double> f_prime(f.nrows(), f.ncols());
+	Matrix<mydouble> F_prime(F.nrows(), F.ncols());
+	Vector<mydouble> likelihood_prime(likelihood.nrows());
+
+	/* update each f value in turn */
+	for (int t = 0; t < f.nrows(); t++) {
+		for (int id = 0; id < f.ncols(); id++) {
+			f_prime = f;
+			f_prime[t][id] = ran.normal(f[t][id],sigma_f);
+
+			calc_logit_F(f_prime,F_prime);
+
+			// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
+			// Proposal is symmetric, so this drops down to the prior. Prior is N(ALPHA[id], TAU[id])
+			// exp((f-alpha)^2-(f'-alpha)^2)*2*tau))
+			double logalpha;
+			logalpha = ((f[t][id]-ALPHA[id])*(f[t][id]-ALPHA[id]) -
+					 (f_prime[t][id]-ALPHA[id])*(f_prime[t][id]-ALPHA[id]))*2*TAU[id];
+			// Likelihood ratio
+			mydouble lik_ratio = calc_lik6(likelihood,likelihood_prime,F_prime);
+			double logtest = logalpha + lik_ratio.LOG();
+
+			if(logtest>=0.0 || ran.U() < exp(logtest)) {	// accept
+				f = f_prime;
+				F = F_prime;
+				for(int i = 0; i < likelihood.nrows(); i++)
+					likelihood[i][ng] = likelihood_prime[i];
+				accept_rate++;
+			}
+			else { // reject
+				reject_rate++;
+			}
+		}
+	}
+//	if ((accept_rate + reject_rate) % 60000 == 0)
+//		cout << "A/R rate for F after " << accept_rate + reject_rate << " iterations is " << (double)accept_rate / (accept_rate+reject_rate) << endl;
 }
 
 /* This version uses the clonal frame version of the likelihood */
@@ -376,14 +487,13 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	for(i=0;i<proprob.size();i++) proprob[i] /= tot;
 
 	double sigma_a = 0.5;							//	factor for normal proposal in MH change of a (case 1)
-	double sigma_f = 0.5;							//	factor for normal proposal in MH change of f (case 3)
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
 
 	/* Source probabilities */
-	Vector<double> ALPHA(ng-1, 0);			///< Mean of assignment proportion (logit scale)
-	Vector<double> TAU(ng-1, 1);			///< Std dev of assignment proportion (logit scale)
-	Vector<double> f(ng-1,0), f_prime(ng-1);	///< F values on the logit scale
-	Vector<mydouble> F(ng), F_prime(ng);		///< Probability of source
+	Vector<double> ALPHA(ng-1, 0);				///< Mean of assignment proportion (logit scale)
+	Vector<double> TAU(ng-1, 1);				///< Precision of assignment proportion (logit scale)
+	Matrix<double> f(ntime,ng-1,0), f_prime(ntime,ng-1);	///< F values on the logit scale
+	Matrix<mydouble> F(ntime,ng), F_prime(ntime,ng);	///< Probability of source
 
 	/* Output to file */
 	char tab = '\t';
@@ -413,8 +523,11 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	for(iter=0;iter<niter;iter++) {
 		if(iter>=burnin && (iter-burnin)%inc==0) {
 			/* Draw our hyper-prior parameters */
-			for(j=0; j < f.size(); j++)
-				f[j] = ran.normal(ALPHA[j], TAU[j]);
+			init_priors(ALPHA, TAU, ran);
+
+			/* Draw our f's */
+			init_f(f, ALPHA, TAU, ran);
+
 			/* Calculate our F's */
 			calc_logit_F(f,F);
 
@@ -423,69 +536,29 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 
 			/* Side chain */
 			for(fiter=0;fiter<fniter;fiter++) {
-				move = (ran.U()<.05) ? 2 : 3; /* Switching likelihood */
-				switch(move) {
-				case 2: {
-					/* update f_logit (switching move)
-					   choose two values to switch, ensuring they're different */
-					int id1 = ran.discrete(0,f.size()-1);
-					int id2 = ran.discrete(0,f.size()-2);
-					if(id2==id1) id2 = f.size()-1;
-					f_prime = f;
-					SWAP(f_prime[id1],f_prime[id2]);
-					calc_logit_F(f_prime,F_prime);
-					logalpha = 1.0;
-					// Prior ratio equals 1 because prior is symmetric
-					// Symmetric proposal so Hastings ratio equals 1
-					// Likelihood ratio
-					mydouble lik_ratio = calc_lik6(LIKHI[use],LIKHI[notuse],F_prime);
+				/* Gibbs step for updating hyperparameters */
+				update_priors(ALPHA, TAU, f, ran);
 
-					logalpha *= lik_ratio;
-					if(logalpha.LOG()>=0.0 || ran.U()<logalpha.todouble()) {	// accept
-						f = f_prime;
-						F = F_prime;
-						for(i=0;i<h;i++) LIKHI[use][i][ng] = LIKHI[notuse][i][ng];
-						flik *= lik_ratio;
-					}
-					else { // reject
-					}
-					break;
-				}
-				case 3: {// update f (II. Using a Metropolis-Hastings step with normal proposal)
-					int id = ran.discrete(0,f.size()-1);
-					f_prime = f;
-					f_prime[id] = ran.normal(f[id],sigma_f);
-					calc_logit_F(f_prime,F_prime);
-					// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
-					// Proposal is symmetric, so this drops down to the prior. Prior is
-					// exp((f^2-f'^2)/(2*tau^2))
-					logalpha.setlog((f[id]*f[id]-f_prime[id]*f_prime[id])/(2*TAU[id]*TAU[id]));
-					// Likelihood ratio
-					mydouble lik_ratio = calc_lik6(LIKHI[use],LIKHI[notuse],F_prime);
+				/* MH step(s) for updating F */
+				update_f(f, F, LIKHI[use], ALPHA, TAU, ran);
 
-					logalpha *= lik_ratio;
-					if(logalpha.LOG()>=0.0 || ran.U()<logalpha.todouble()) {	// accept
-						f = f_prime;
-						F = F_prime;
-						for(i=0;i<h;i++) LIKHI[use][i][ng] = LIKHI[notuse][i][ng];
-						flik *= lik_ratio;
-					}
-					else { // reject
-					}
-					break;
-				}
-				default:
-					error("Cluster::mcmc6f(): Undefined move in f chain");
-				}
+				/* Output */
 				if(fiter%100==0) {
 					o3 << fiter;
-					for(i=0;i<ng;i++) o3 << tab << F[i].todouble();
+					for (int t = 0; t < ntime; t++) {
+						for(i=0;i<ng;i++) {
+							o3 << tab << F[t][i].todouble();
+						}
+					}
+					for (int i = 0; i < ng-1; i++) o3 << tab << ALPHA[i];
+					for (int i = 0; i < ng-1; i++) o3 << tab << TAU[i];
 					o3 << endl;
 					if(fiter>=fburnin) {
 						++ctr;
 						for(i=0;i<h;i++) {
+							const int t = htime[i];
 							for(j=0;j<ng;j++) {
-								GLIK[i][j] += F[j] * LIKHI[use][i][j] / LIKHI[use][i][ng];
+								GLIK[i][j] += F[t][j] * LIKHI[use][i][j] / LIKHI[use][i][ng];
 							}
 						}
 					}

@@ -168,8 +168,8 @@ public:
 	void calc_R(Matrix<mydouble> &r, Matrix<double> &R);
 	void calc_Ri(Matrix<mydouble> &r, Matrix<double> &R, const int i);
 	void precalc();
-	mydouble calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Vector<mydouble> &F);
-	mydouble calc_lik6(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI_notuse, Vector<mydouble> &F_prime);
+	mydouble calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Matrix<mydouble> &F);
+	mydouble calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble> &likelihood_prime, const Matrix<mydouble> &F_prime);
 	mydouble calc_lik6d(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Vector<mydouble> &F);
 	mydouble calc_lik7(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Vector< Matrix<double> > &P, Vector<mydouble> &F);
 	mydouble calc_lik7(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI_notuse, Vector<mydouble> &F_prime);
@@ -181,6 +181,11 @@ public:
 	template<typename T> void pSWAP(Matrix<T> &a, Matrix<T> &b);
 	void simHi6(Vector<mydouble> &F, Matrix<double> &a, Matrix< Vector<double> > &b, Matrix<double> &r, Matrix<mydouble> &LIKHI, ofstream &o4, Random &ran);
 	void posteriorP6g(const char* param_file, Random &ran, const char* out_file);
+
+	void init_priors(Vector<double> &ALPHA, Vector<double> &TAU, Random &ran);
+	void update_priors(Vector<double> &ALPHA, Vector<double> &TAU, const Matrix<double> &f, Random &ran);
+	void init_f(Matrix<double> &f, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran);
+	void update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran);
 };
 
 #endif//_CLUSTER_H_
