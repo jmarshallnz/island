@@ -175,6 +175,25 @@ void Cluster::precalc() {
 		}
 		hid[i] = j;
 	}
+	// Identifies haplotypes and times that are identical, to save recalculating the likelihoods
+	htid = Vector<int>(h);
+	for(i=0;i<h;i++) {
+		for(j=0;j<i;j++) {
+			bool same = (htime[i] == htime[j]);
+			if (same)
+			{
+				for(l=0;l<nloc;l++) {
+					if(human[i][l]!=human[j][l]) {
+						same = false;
+						break;
+					}
+				}
+				if(same) break;
+			}
+		}
+		htid[i] = j;
+	}
+
 	G = Vector<int>(h);
 	simLIK = Matrix<mydouble>(h,ng);
 	identicals = Vector<int>(h);
@@ -189,21 +208,30 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<m
 	const int h = LIKHI.nrows();
 	mydouble lik = 1.0;
 	for(i=0;i<h;i++) {
-		if(hid[i]<i) { ///< have an identical haplotype, so copy the likelihood over
-			const int ii = hid[i];
+		if (htid[i] < i) {
+			/* optimisation: if human+time is identical, copy across the combine with F stage */
+			const int ii = htid[i];
 			for(j=0;j<ng;j++)
 				LIKHI[i][j] = LIKHI[ii][j];
-		}
-		else {	// calculate the likelihood
-			for(j=0;j<ng;j++) {
-				punique = a[j][ng];			// NOTE USE of little a here!!!
-				LIKHI[i][j] = likHi6(i,j,A,b,R);
+			LIKHI[i][ng] = LIKHI[ii][ng];
+		} else {
+			/* different time or different haplotype */
+			if(hid[i]<i) { ///< have an identical haplotype, so copy the likelihood over
+				const int ii = hid[i];
+				for(j=0;j<ng;j++)
+					LIKHI[i][j] = LIKHI[ii][j];
 			}
-		}
-		/* combine with F */
-		LIKHI[i][ng] = 0.0;
-		for (j = 0; j < ng; j++) {
-			LIKHI[i][ng] += F[j] * LIKHI[i][j];
+			else {	// calculate the likelihood
+				for(j=0;j<ng;j++) {
+					punique = a[j][ng];			// NOTE USE of little a here!!!
+					LIKHI[i][j] = likHi6(i,j,A,b,R);
+				}
+			}
+			/* combine with F */
+			LIKHI[i][ng] = 0.0;
+			for (j = 0; j < ng; j++) {
+				LIKHI[i][ng] += F[j] * LIKHI[i][j];
+			}
 		}
 		lik *= LIKHI[i][ng];
 	}
@@ -222,9 +250,15 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI
 	const int h = LIKHI_use.nrows();
 	mydouble lik = 1.0;
 	for(i=0;i<h;i++) {
-		LIKHI_notuse[i][ng] = 0.0;
-		for(j=0;j<ng;j++) {
-			LIKHI_notuse[i][ng] += F_prime[j] * LIKHI_use[i][j];
+		if (htid[i] < i) {
+			/* optimisation: if human+time is identical, copy across the combine with F stage */
+			const int ii = htid[i];
+			LIKHI_notuse[i][ng] = LIKHI_notuse[ii][ng];
+		} else {
+			LIKHI_notuse[i][ng] = 0.0;
+			for(j=0;j<ng;j++) {
+				LIKHI_notuse[i][ng] += F_prime[j] * LIKHI_use[i][j];
+			}
 		}
 		lik *= LIKHI_notuse[i][ng] / LIKHI_use[i][ng];
 	}
