@@ -154,8 +154,15 @@ public:
 		//return element[pos];
 		return safeArray< T >(element[pos],0,protected_ncols);
 	};
+	/*DEBUG Subscript operator*/inline safeArray< T > operator[](int pos) const{
+		if(pos<0) error("Matrix::operator[](int row): row<0");
+		if(pos>=protected_nrows) error("Matrix::operator[](int row): row>=nrows()");
+		//return element[pos];
+		return safeArray< T >(element[pos],0,protected_ncols);
+	};
 #else
 	/*Subscript operator*/inline T* operator[](int pos){return element[pos];};
+	/*Subscript operator*/inline const T* operator[](int pos) const {return element[pos];};
 #endif
 
 	/*Matrix multiplication*/
