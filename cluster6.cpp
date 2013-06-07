@@ -207,6 +207,10 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<m
 	return lik;
 }
 
+/*! \brief used to determine the new likelihood after a swap in F
+  i.e. the individual within-group likelihoods will be the same, so just multiply
+       up by the group likelihood (F)
+ */
 mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI_notuse, Vector<mydouble> &F_prime) {
 #if defined(_FLAT_LIKELIHOOD)
 	return mydouble(1.0);
@@ -350,8 +354,6 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	Vector<double> f(ng-1,0), f_prime(ng-1);	///< F values on the logit scale
 	Vector<mydouble> F(ng), F_prime(ng);		///< Probability of source
 
-	Vector<double> pLIKg(ng);						//	storage for g Gibbs step (case 4)
-
 	/* Output to file */
 	char tab = '\t';
 	out << 0;
@@ -423,8 +425,8 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 					f_prime = f;
 					f_prime[id] = ran.normal(f[id],sigma_f);
 					calc_logit_F(f_prime,F_prime);
-					// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f) 
-					// Proposal is symmetric, so this drops down to the prior. Prior is 
+					// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
+					// Proposal is symmetric, so this drops down to the prior. Prior is
 					// exp((f^2-f'^2)/(2*tau^2))
 					logalpha.setlog((f[id]*f[id]-f_prime[id]*f_prime[id])/(2*TAU[id]*TAU[id]));
 					// Likelihood ratio
