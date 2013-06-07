@@ -8,7 +8,7 @@ nt = 2 # TODO: Automate this
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("out2")
+fnames = c("out1")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
@@ -38,16 +38,16 @@ for (t in 1:nt) {
 plot(fmcmc[fd,((t-1)*ng+2)],type="l",ylim=c(0,1),col=2,ylab="Proportion",main=paste("F, t=",t,sep=""))
 for(i in 2:ng) lines(fmcmc[fd,((t-1)*ng+i+1)],col=rainbow(ng)[i])
 }
-plot(fmcmc[fd,nt*ng+2],type="l",ylim=range(fmcmc[fd,nt*ng+2:ng]),col=2,ylab="Value",main="ALPHA")
-for(i in 2:(ng-1)) lines(fmcmc[fd,nt*ng+i+1],col=rainbow(ng)[i])
-plot(fmcmc[fd,(nt+1)*ng+1],type="l",ylim=range(fmcmc[fd,(nt+1)*ng+1:(ng-1)]),col=2,ylab="Value",main="TAU")
-for(i in 2:(ng-1)) lines(fmcmc[fd,(nt+1)*ng+i],col=rainbow(ng)[i])
+plot(fmcmc[fd,nt*ng+2],type="l",ylim=range(fmcmc[fd,nt*ng+2*1:(ng-1)]),col=2,ylab="Value",main="ALPHA")
+for(i in 2:(ng-1)) lines(fmcmc[fd,nt*ng+2*i],col=rainbow(ng)[i])
+plot(fmcmc[fd,nt*ng+3],type="l",ylim=range(fmcmc[fd,nt*ng+2*1:(ng-1)+1]),col=2,ylab="Value",main="TAU")
+for(i in 2:(ng-1)) lines(fmcmc[fd,nt*ng+2*i+1],col=rainbow(ng)[i])
 
-plot(density(fmcmc[fd,nt*ng+2]), xlim=range(fmcmc[fd,nt*ng+2:ng]), col=2,main="ALPHA")
-for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+i+1]),col=rainbow(ng)[i])
+plot(density(fmcmc[fd,nt*ng+2]), xlim=range(fmcmc[fd,nt*ng+2*1:(ng-1)]), col=2,main="ALPHA")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+2*i]),col=rainbow(ng)[i])
 
-plot(density(fmcmc[fd,(nt+1)*ng+1]), xlim=range(fmcmc[fd,(nt+1)*ng+1:(ng-1)]), col=2,main="ALPHA")
-for(i in 2:(ng-1)) lines(density(fmcmc[fd,(nt+1)*ng+i]),col=rainbow(ng)[i])
+plot(density(fmcmc[fd,nt*ng+3]), xlim=range(fmcmc[fd,nt*ng+2*1:(ng-1)+1]), col=2,main="ALPHA")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+2*i+1]),col=rainbow(ng)[i])
 
 
 

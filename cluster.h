@@ -182,10 +182,10 @@ public:
 	void simHi6(Vector<mydouble> &F, Matrix<double> &a, Matrix< Vector<double> > &b, Matrix<double> &r, Matrix<mydouble> &LIKHI, ofstream &o4, Random &ran);
 	void posteriorP6g(const char* param_file, Random &ran, const char* out_file);
 
-	void init_priors(Vector<double> &ALPHA, Vector<double> &TAU, Random &ran);
-	void update_priors(Vector<double> &ALPHA, Vector<double> &TAU, const Matrix<double> &f, Random &ran);
-	void init_f(Matrix<double> &f, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran);
-	void update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran);
+	void init_priors(Matrix<double> &ALPHA, Random &ran);
+	void update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran);
+	void init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran);
+	void update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Matrix<double> &ALPHA, Random &ran);
 };
 
 #endif//_CLUSTER_H_

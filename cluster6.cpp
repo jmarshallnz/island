@@ -310,44 +310,45 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 			o3 << tab << "t" << t << "f" << i;
 		}
 	}
-	for (int i = 0; i < ng-1; i++) o3 << tab << "ALPHA" << i;
-	for (int i = 0; i < ng-1; i++) o3 << tab << "TAU" << i;
+	for (int i = 0; i < ng-1; i++) {
+		for (int j = 0; j < 2; j++) {
+			o3 << tab << "ALPHA" << i << "_" << j;
+		}
+	}
 	o3 << endl;
 	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o2,o3);
 }
 
-void Cluster::init_priors(Vector<double> &ALPHA, Vector<double> &TAU, Random &ran)
+void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 {
 	/* Priors */
 	const double Alpha_mu = 0, Alpha_prec = 0.1;
 	const double Tau_shape = 0.1, Tau_rate = 0.1;
 
-	/* assumes ALPHA.size() == TAU.size() */
-	for(int j = 0; j < ALPHA.size(); j++) {
-		ALPHA[j] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
-		TAU[j]   = Tau_shape/Tau_rate; 	//ran.gamma(1/Tau_rate, Tau_shape);
+	for(int j = 0; j < ALPHA.nrows(); j++) {
+		ALPHA[j][0] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
+		ALPHA[j][1]   = Tau_shape/Tau_rate; 	//ran.gamma(1/Tau_rate, Tau_shape);
 	}
 }
 
-void Cluster::init_f(Matrix<double> &f, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran)
+void Cluster::init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran)
 {
 	/* f[t][i] ~ Normal(ALPHA[j], TAU[j]) */
 	for (int t = 0; t < f.nrows(); t++) {
 		for (int j = 0; j < f.ncols(); j++) {
-			f[t][j] = 0; //ran.normal(ALPHA[j], 1/sqrt(TAU[j]));
+			f[t][j] = 0; //ran.normal(ALPHA[j][0], 1/sqrt(ALPHA[j][0]));
 		}
 	}
 }
 
-void Cluster::update_priors(Vector<double> &ALPHA, Vector<double> &TAU, const Matrix<double> &f, Random &ran)
+void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran)
 {
 	/* Priors */
 	const double Alpha_mu = 0, Alpha_prec = 0.1;
 	const double Tau_shape = 0.1, Tau_rate = 0.1;
 
-	/* assumes ALPHA.size() == TAU.size() */
-	for (int i = 0; i < ALPHA.size(); i++) {
-		/* update ALPHA[i]
+	for (int i = 0; i < ALPHA.nrows(); i++) {
+		/* update ALPHA[i][0]
 		 posterior params will be (Alpha_mu*Alpha_prec + TAU[i]*sum(F[][i])) / (Alpha_prec + n*TAU[i])
 		 */
 		double s = 0;
@@ -356,19 +357,19 @@ void Cluster::update_priors(Vector<double> &ALPHA, Vector<double> &TAU, const Ma
 			s += f[t][i];
 			ss += f[t][i]*f[t][i];
 		}
-		double prec = Alpha_prec + ntime*TAU[i];
-		double mu = (Alpha_mu*Alpha_prec + s*TAU[i]) / prec;
-		ALPHA[i] = ran.normal(mu, 1/sqrt(prec)); /* ran.normal takes sd=1/sqrt(precision) */
-		/* update TAU[i]
+		double prec = Alpha_prec + ntime*ALPHA[i][1];
+		double mu = (Alpha_mu*Alpha_prec + s*ALPHA[i][1]) / prec;
+		ALPHA[i][0] = ran.normal(mu, 1/sqrt(prec)); /* ran.normal takes sd=1/sqrt(precision) */
+		/* update ALPHA[i][1]
 		 posterior params will be (Tau_a + n/2, Tau_b + sum(F-mu)^2/2)
 		 */
 		double shape = Tau_shape + ntime/2;
 		double rate = Tau_rate + (ntime*ss-s*s)/(2*ntime);
-		TAU[i] = ran.gamma(1/rate, shape);
+		ALPHA[i][1] = ran.gamma(1/rate, shape);
 	}
 }
 
-void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Vector<double> &ALPHA, const Vector<double> &TAU, Random &ran)
+void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Matrix<double> &ALPHA, Random &ran)
 {
 	static int accept_rate = 0;
 	static int reject_rate = 0;
@@ -386,15 +387,16 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 		for (int id = 0; id < f.ncols(); id++) {
 			f_prime = f;
 			f_prime[t][id] = ran.normal(f[t][id],sigma_f);
+			const double *alpha = ALPHA[id];
 
 			calc_logit_F(f_prime,F_prime);
 
 			// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
-			// Proposal is symmetric, so this drops down to the prior. Prior is N(ALPHA[id], TAU[id])
+			// Proposal is symmetric, so this drops down to the prior. Prior is N(alpha[0], alpha[1])
 			// exp((f-alpha)^2-(f'-alpha)^2)*2*tau))
 			double logalpha;
-			logalpha = ((f[t][id]-ALPHA[id])*(f[t][id]-ALPHA[id]) -
-					 (f_prime[t][id]-ALPHA[id])*(f_prime[t][id]-ALPHA[id]))*2*TAU[id];
+			logalpha = ((f[t][id]-alpha[0])*(f[t][id]-alpha[0]) -
+					 (f_prime[t][id]-alpha[0])*(f_prime[t][id]-alpha[0]))*2*alpha[1];
 			// Likelihood ratio
 			mydouble lik_ratio = calc_lik6(likelihood,likelihood_prime,F_prime);
 			double logtest = logalpha + lik_ratio.LOG();
@@ -490,8 +492,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
 
 	/* Source probabilities */
-	Vector<double> ALPHA(ng-1, 0);				///< Mean of assignment proportion (logit scale)
-	Vector<double> TAU(ng-1, 1);				///< Precision of assignment proportion (logit scale)
+	Matrix<double> ALPHA(ng-1, 2, 0);			///< Mean/Precision of assignment proportion (logit scale)
 	Matrix<double> f(ntime,ng-1,0), f_prime(ntime,ng-1);	///< F values on the logit scale
 	Matrix<mydouble> F(ntime,ng), F_prime(ntime,ng);	///< Probability of source
 
@@ -523,10 +524,10 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	for(iter=0;iter<niter;iter++) {
 		if(iter>=burnin && (iter-burnin)%inc==0) {
 			/* Draw our hyper-prior parameters */
-			init_priors(ALPHA, TAU, ran);
+			init_priors(ALPHA, ran);
 
 			/* Draw our f's */
-			init_f(f, ALPHA, TAU, ran);
+			init_f(f, ALPHA, ran);
 
 			/* Calculate our F's */
 			calc_logit_F(f,F);
@@ -537,10 +538,10 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			/* Side chain */
 			for(fiter=0;fiter<fniter;fiter++) {
 				/* Gibbs step for updating hyperparameters */
-				update_priors(ALPHA, TAU, f, ran);
+				update_priors(ALPHA, f, ran);
 
 				/* MH step(s) for updating F */
-				update_f(f, F, LIKHI[use], ALPHA, TAU, ran);
+				update_f(f, F, LIKHI[use], ALPHA, ran);
 
 				/* Output */
 				if(fiter%100==0) {
@@ -550,8 +551,11 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 							o3 << tab << F[t][i].todouble();
 						}
 					}
-					for (int i = 0; i < ng-1; i++) o3 << tab << ALPHA[i];
-					for (int i = 0; i < ng-1; i++) o3 << tab << TAU[i];
+					for (int i = 0; i < ALPHA.nrows(); i++) {
+						for (int j = 0; j < ALPHA.ncols(); j++) {
+							o3 << tab << ALPHA[i][j];
+						}
+					}
 					o3 << endl;
 					if(fiter>=fburnin) {
 						++ctr;
