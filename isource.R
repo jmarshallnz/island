@@ -1,5 +1,6 @@
 sc <- c("CHICKEN","CATTLE","SHEEP", "WATER/ENVIRONMENT")
 ng = length(sc)
+nt = 2 # TODO: Automate this
 
 #########################
 ### READ IN THE FILES ###
@@ -7,7 +8,7 @@ ng = length(sc)
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("out1")
+fnames = c("out2")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
@@ -23,7 +24,7 @@ for(i in 1:length(fnames)) {
 g = t(g)/length(fnames)
 ### SET THE BURN-IN
 gd = mcmc$iter>=5000
-fd = fmcmc$iter>=1000
+fd = fmcmc$iter>=10000
 
 ################################################################
 ### PLOT 1                                                   ###
@@ -32,8 +33,23 @@ fd = fmcmc$iter>=1000
 ################################################################
 pdf(file=paste(fname,".pdf",sep=""), width=11, height=8)
 
-plot(fmcmc$f0[fd],type="l",ylim=c(0,1),col=2,ylab="Proportion")
-for(i in 2:ng) lines(fmcmc[fd,(1+i)],col=rainbow(ng)[i])
+par(mfrow=c(3,2))
+for (t in 1:nt) {
+plot(fmcmc[fd,((t-1)*ng+2)],type="l",ylim=c(0,1),col=2,ylab="Proportion",main=paste("F, t=",t,sep=""))
+for(i in 2:ng) lines(fmcmc[fd,((t-1)*ng+i+1)],col=rainbow(ng)[i])
+}
+plot(fmcmc[fd,nt*ng+2],type="l",ylim=range(fmcmc[fd,nt*ng+2:ng]),col=2,ylab="Value",main="ALPHA")
+for(i in 2:(ng-1)) lines(fmcmc[fd,nt*ng+i+1],col=rainbow(ng)[i])
+plot(fmcmc[fd,(nt+1)*ng+1],type="l",ylim=range(fmcmc[fd,(nt+1)*ng+1:(ng-1)]),col=2,ylab="Value",main="TAU")
+for(i in 2:(ng-1)) lines(fmcmc[fd,(nt+1)*ng+i],col=rainbow(ng)[i])
+
+plot(density(fmcmc[fd,nt*ng+2]), xlim=range(fmcmc[fd,nt*ng+2:ng]), col=2,main="ALPHA")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+i+1]),col=rainbow(ng)[i])
+
+plot(density(fmcmc[fd,(nt+1)*ng+1]), xlim=range(fmcmc[fd,(nt+1)*ng+1:(ng-1)]), col=2,main="ALPHA")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,(nt+1)*ng+i]),col=rainbow(ng)[i])
+
+
 
 #############################################################
 ### PLOT 2                                                ###
@@ -42,23 +58,63 @@ for(i in 2:ng) lines(fmcmc[fd,(1+i)],col=rainbow(ng)[i])
 #############################################################
 par(mfrow=c(2,2))
 ### PLOT THE HISTOGRAMS
-for(i in 1:ng) hist(fmcmc[fd,(1+i)],30,col=rainbow(ng)[i],main=sc[i],prob=T,xlim=c(0,1),xlab="Proportion")
+for (t in 1:nt) {
+	for(i in 1:ng)
+		hist(fmcmc[fd,(t-1)*ng+(1+i)],30,col=rainbow(ng)[i],main=paste(sc[i]," t=",t,sep=""),prob=T,xlim=c(0,1),xlab="Proportion")
+}
 
 ########################################################
 ### TABLE 1                                          ###
 ### SUMMARIES OF THE POSTERIOR DISTRIBUTIONS OF F[i] ###
 ########################################################
-df = fmcmc[fd,2:(ng+1)]; names(df) <- sc;
-pe = apply(df,2,function(x)c("mean"=mean(x),"median"=median(x),"sd"=sd(x),quantile(x,c(.025,.975))))
-print(pe)
+for (t in 1:nt) {
+	print(paste("testing line",t,"\n"))
+	df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]; names(df) <- sc;
+	pe = apply(df,2,function(x)c("mean"=mean(x),"median"=median(x),"sd"=sd(x),quantile(x,c(.025,.975))))
+	print(pe)
+
+#################################################################
+### TABLE 2                                                   ###
+### PROBABILITY THAT EACH SOURCE IS RESPONSIBLE FOR THE MOST, ###
+### SECOND MOST, THIRD MOST, ETC, NUMBER OF CASES             ###
+#################################################################
+	od = t(apply(df,1,order,decreasing=T))
+### THE TABLE
+	print(apply(od,2,function(x)table(factor(x,levels=1:ng,labels=sc)))/nrow(df))
+	enc = apply(od,1,function(x) sum(x*((0:(ng-1))^ng)))
+	encmode = as.numeric(levels(factor(enc)))[which.max(table(enc))]
+### MOST LIKELY ORDER
+	print(sc[od[which(enc==encmode)[1],]])
+### POSTERIOR PROBABILITY OF THIS, THE MOST LIKELY ORDER
+	print(max(table(enc))/nrow(df))
+
 
 #################################################################################
 ### PLOT 3                                                                    ###
 ### BARCHART OF THE ESTIMATED PROPORTION OF CASES ATTRIBUTABLE TO EACH SOURCE ###
 #################################################################################
-par(mfrow=c(1,1))
-mp = barplot(pe[1,],col=rainbow(ng),ylim=c(0,1),ylab="Proportion of human cases")
-segments(mp,pe[4,],mp,pe[5,],lwd=2)
+	par(mfrow=c(1,1)) # update me for times
+	mp = barplot(pe[1,],col=rainbow(ng),ylim=c(0,1),ylab="Proportion of human cases")
+	segments(mp,pe[4,],mp,pe[5,],lwd=2)
+
+#################################################################
+### TABLE 3                                                   ###
+### MOST PROBABLE ORDERINGS AND THEIR POSTERIOR PROBABILITIES ###
+#################################################################
+	enc_od = as.numeric(levels(factor(enc)))[order(table(enc),decreasing=TRUE)]
+	enc_pr = table(enc)[order(table(enc),decreasing=TRUE)]/nrow(df)
+	unenc_od = t(sapply(enc_od,function(i) sc[od[which(enc==i)[1],]]))
+	print(cbind(unenc_od,"Posterior probability"=enc_pr)[enc_pr>.05,])
+
+### Ordering of top 3 no. cases: full order
+	good = apply(od[,1:3],1,function(x)all(sort(x)==c(1,2,5)))
+	odg = od[good,1:3]
+	encg = apply(odg,1,function(x) sum(x*((0:2)^3)))
+	encg_od = as.numeric(levels(factor(encg)))[order(table(encg),decreasing=TRUE)]
+	encg_pr = table(encg)[order(table(encg),decreasing=TRUE)]/nrow(df)
+	unencg_od = t(sapply(encg_od,function(i) sc[odg[which(encg==i)[1],]]))
+	print(cbind(unencg_od,encg_pr)[1:min(4,nrow(unencg_od)),])
+}
 
 #################################################
 ### PLOT 4                                    ###
@@ -73,39 +129,6 @@ for(i in 0:(ng-1)) {
   lines(mcmc$iter[gd],mcmc[[paste("r",i,sep="")]][gd],col="grey")
 }
 
-#################################################################
-### TABLE 2                                                   ###
-### PROBABILITY THAT EACH SOURCE IS RESPONSIBLE FOR THE MOST, ###
-### SECOND MOST, THIRD MOST, ETC, NUMBER OF CASES             ###
-#################################################################
-od = t(apply(df,1,order,decreasing=T))
-### THE TABLE
-print(apply(od,2,function(x)table(factor(x,levels=1:ng,labels=sc)))/nrow(df))
-enc = apply(od,1,function(x) sum(x*((0:(ng-1))^ng)))
-encmode = as.numeric(levels(factor(enc)))[which.max(table(enc))]
-### MOST LIKELY ORDER
-print(sc[od[which(enc==encmode)[1],]])
-### POSTERIOR PROBABILITY OF THIS, THE MOST LIKELY ORDER
-print(max(table(enc))/nrow(df))
-
-#################################################################
-### TABLE 3                                                   ###
-### MOST PROBABLE ORDERINGS AND THEIR POSTERIOR PROBABILITIES ###
-#################################################################
-enc_od = as.numeric(levels(factor(enc)))[order(table(enc),decreasing=TRUE)]
-enc_pr = table(enc)[order(table(enc),decreasing=TRUE)]/nrow(df)
-unenc_od = t(sapply(enc_od,function(i) sc[od[which(enc==i)[1],]]))
-print(cbind(unenc_od,"Posterior probability"=enc_pr)[enc_pr>.05,])
-
-### Ordering of top 3 no. cases: full order
-good = apply(od[,1:3],1,function(x)all(sort(x)==c(1,2,5)))
-odg = od[good,1:3]
-encg = apply(odg,1,function(x) sum(x*((0:2)^3)))
-encg_od = as.numeric(levels(factor(encg)))[order(table(encg),decreasing=TRUE)]
-encg_pr = table(encg)[order(table(encg),decreasing=TRUE)]/nrow(df)
-unencg_od = t(sapply(encg_od,function(i) sc[odg[which(encg==i)[1],]]))
-print(cbind(unencg_od,encg_pr)[1:min(4,nrow(unencg_od)),])
-
 #################################################
 ### PLOT 5                                    ###
 ### PIE CHARTS OF THE EVOLUTIONARY PARAMETERS ###
@@ -117,6 +140,8 @@ for(i in 0:(ng-1)) {
   whng = which(names(mcmc)==paste("A",i,ng,"",sep="."))
   pie(apply(mcmc[gd,wh0:whng],2,mean),col=COL,labels="",main=sc[i+1],col.main=COL[i+1],radius=1.,border="white")
 }
+
+dev.off()
 
 ########################################################
 ### PLOT 6                                           ###
@@ -139,12 +164,12 @@ tp2 = apply(G,1,stretch,res)
 
 ### DO THE PLOT
 par(mfrow=c(1,2))
-image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
+#image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
 
 ### DO THE PLOT, BUT RE-ORDERED
 wm = apply(G,1,which.max)
 od = rev(order(wm!=4,wm!=5,G[,1],G[,2],G[,3],G[,4]))
-image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
+#image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
 
 ##########################################################
 ### TABLE 4                                            ###
