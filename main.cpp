@@ -9,94 +9,76 @@ using namespace myutils;
 Vector<double> simulate_data(Random &ran)
 {
 	/* simulate some data */
-	double at = 5.0;
 	double bt = 0.5;
 	double st = 1;
 	int     T = 200;
 	Vector<double> y(T+1,0);
-	y[0] = at / (1-bt);
+	y[0] = 0;
 	for (int t = 1; t <= T; t++)
-		y[t] = ran.normal(at + bt*y[t-1],st);
+		y[t] = ran.normal(bt*y[t-1],st);
 	return y;
 }
 
-void gibbs_ar1(Vector<double> &y, double &a, double &b, double &s2, Random &ran)
+void gibbs_ar1(Vector<double> &y, double &b, double &s2, Random &ran)
 {
 	/*
-	 Fits y[t] = a + by[t-1] + e where e=N(0,s2)
+	 Fits y[t] = by[t-1] + e where e=N(0,s2)
 
-	 Note that we don't actually use a,b, or s2 - we estimate them directly
-	 from the y's. i.e. this is equivalent to drawing from the posterior p(a,b|y[0..T])
-	 then p(s2|a,b,y[0..T]), then p(y[0]|a,b,s2,y[1]).
+	 Then b ~ N(bhat, shat2/sxx) and
+              s2 ~ G(syy-bhat*sxx/(T-1))
+
+	 where bhat = sxy/sxx and shat2 = (syy - bhat*sxx)/(T-1)
+
+	 Note that we don't actually use b, or s2 - we estimate them directly
+	 from the y's. i.e. this is equivalent to drawing from the posterior p(b|y[0..T])
+	 then p(s2|b,y[0..T]), then p(y[0]|b,s2,y[1]).
 
 	 */
 	const int T = y.size() - 1;
 
 	/* priors */
-	const double a0 = 0;  ///< constant
-	const double va = 1000;
-	const double b0 = 0;  ///< autocorrelation
-	const double vb = 1000;
+	const double b0 = 0;  	///< autocorrelation mean
+	const double pb = 0.001;///< autocorrelation precision
+
 	const double v0 = 0.01; ///< gamma a
 	const double vs = 0.01; ///< gamma b
 
 	/* posterior hyperparams */
 
-	double sx = 0;
 	double sxx = 0;
 	double sxy = 0;
 	for (int t = 0; t < T; t++) {
-		sx += y[t];
 		sxx += y[t]*y[t];
 		sxy += y[t] * y[t+1];
 	}
-	double sy = sx + y[T] - y[0];
 	double syy = sxx + y[T]*y[T] - y[0]*y[0];
 
+	/* estimates from OLS regression */
+	double bhat = sxy / sxx;
+	double s2f = (syy - bhat*sxy)/(T-1);
+
 	/*
-	   posterior for alpha,beta is
-		N(theta1, s2*C1)
-	   where theta1 = C1(inv(C0)theta + X'y)
-	   and C1 = inv(inv(C0) + X'X)
+	   posterior for beta is
+		N(sxy/(pb + sxx), s^2/(pb + sxx))
+
+	   posterior for sigma is
+		IG(v0 + T/2, vs + rss/2)
 	 */
 
-	/* C1 */
-	double m11 = (1/va + T);
-	double m00 = (1/vb + sxx);
-	double m01 = -sx;
-	double det = m00*m11 - m01*m01;
-	m00 /= det;
-	m11 /= det;
-	m01 /= det;
+	double bf = sxy / (pb + sxx);
+	double bs = sqrt(s2f / (pb + sxx));
 
-	/* theta1 */
-	double t1 = a0 / va + sy;
-	double t2 = b0 / vb + sxy;
-	double af = (m00*t1 + m01*t2);
-	double bf = (m01*t1 + m11*t2);
+	/* 1: sample from p(b|y[0..T]) */
+	b = bf + bs*ran.Z();
 
-	/* Cholesky decomp of C1 */
-	double l00 = sqrt(m00);
-	double l10 = m01/l00;
-	double l11 = sqrt(m11 - l10*l10);
+	/* 2: sample from p(s2|b,y[0..T]) */
 
-	/* estimate s2f */
-	double bhat  = (T*sxy - sx*sy) / (T*sxx - sx*sx);
-	double s2f = (T*syy - sy*sy - bhat*bhat*(T*sxx - sx*sx))/T/(T-2);
+	/* from sum((y - bx)^2) */
+	double rss = syy - 2*b*sxy + b*b*sxx;
+	s2 = ran.gamma(1/(vs+rss/2), v0 + T/2);
 
-	/* 1: sample from p(a,b|y[0..T]) */
-	double z0 = ran.Z(), z1 = ran.Z();
-	a = af + sqrt(s2f)*(l00*z0);
-	b = bf + sqrt(s2f)*(l10*z0 + l11*z1);
-
-	/* 2: sample from p(s2|a,b,y[0..T]) */
-
-	/* from sum((y - (a + bx)))^2 */
-	double rss = syy - 2*a*sy - 2*b*sxy + T*a*a + 2*a*b*sx + b*b*sxx;
-	s2 = ran.gamma(2/(vs+rss), (v0 + T)/2);
-
-	/* 3: sample from p(y[0]|a,b,s2,y[1])  */
-	y[0] = a + b*y[1] + sqrt(s2)*ran.Z();
+	/* 3: sample from p(y[0]|b,s2,y[1])  */
+	y[0] = y[1]/b + sqrt(s2)*ran.Z();
 }
 
 int main(const int argc, const char* argv[]) {
@@ -126,11 +108,10 @@ int main(const int argc, const char* argv[]) {
 	ofstream out(out_file);
 	for (int i = 0; i < burnin + iters; i++) {
 
-		double a, b, s2;
-		gibbs_ar1(y, a, b, s2, ran);
+		double b, s2;
+		gibbs_ar1(y, b, s2, ran);
 
 		if (i >= burnin) {
-			out << a << '\t';
 			out << b << '\t';
 			out << s2 << '\t';
 			out << y[0] << '\n';
