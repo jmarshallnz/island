@@ -224,7 +224,7 @@ void Cluster::open_all(const char* filesource, const char *filehuman) {
 			for(j=0;j<nloc;j++) {
 				human[ih][j] = isolate[i][j+1];
 			}
-			htime[ih] = atoi(TSVhuman.data[ih][nloc+1].c_str());
+			htime[ih] = atoi(TSVhuman.data[ih][nloc+1].c_str())-1;
 			if (htime[ih] > ntime)
 				ntime = htime[ih];
 			++ih;
