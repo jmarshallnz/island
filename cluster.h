@@ -169,7 +169,7 @@ public:
 	void calc_Ri(Matrix<mydouble> &r, Matrix<double> &R, const int i);
 	void precalc();
 	mydouble calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Matrix<mydouble> &F);
-	mydouble calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble> &likelihood_prime, const Matrix<mydouble> &F_prime);
+	mydouble calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble> &likelihood_prime, const Vector<mydouble> &F_prime, const int t);
 	mydouble calc_lik6d(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Vector<mydouble> &F);
 	mydouble calc_lik7(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Vector< Matrix<double> > &P, Vector<mydouble> &F);
 	mydouble calc_lik7(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI_notuse, Vector<mydouble> &F_prime);
@@ -182,6 +182,8 @@ public:
 	void simHi6(Vector<mydouble> &F, Matrix<double> &a, Matrix< Vector<double> > &b, Matrix<double> &r, Matrix<mydouble> &LIKHI, ofstream &o4, Random &ran);
 	void posteriorP6g(const char* param_file, Random &ran, const char* out_file);
 
+	void calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F);
+	void calc_logit_F(const double *f, int id, const double &f_prime, Vector<mydouble> &F);
 	void init_priors(Matrix<double> &ALPHA, Random &ran);
 	void update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran);
 	void init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran);

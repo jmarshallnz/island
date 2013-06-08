@@ -239,11 +239,11 @@ mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<m
 	return lik;
 }
 
-/*! \brief used to determine the new likelihood after a swap in F
+/*! \brief used to determine the new likelihood after a swap in F at a particular time point t
   i.e. the individual within-group likelihoods will be the same, so just multiply
        up by the group likelihood (F)
  */
-mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble> &likelihood_prime, const Matrix<mydouble> &F_prime) {
+mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble> &likelihood_prime, const Vector<mydouble> &F_prime, const int t) {
 #if defined(_FLAT_LIKELIHOOD)
 	return mydouble(1.0);
 #endif
@@ -251,24 +251,26 @@ mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble>
 	mydouble lik = 1.0;
 
 	for(int i = 0; i < h; i++) {
-		const int t = htime[i];
-		if (htid[i] < i) {
-			/* optimisation: if human+time is identical, copy across the combine with F stage */
-			const int ii = htid[i];
-			likelihood_prime[i] = likelihood_prime[ii];
-		} else {
-			likelihood_prime[i] = 0.0;
-			for(int j = 0; j < ng ; j++) {
-				likelihood_prime[i] += F_prime[t][j] * likelihood[i][j];
+		if (htime[i] == t)
+		{
+			if (htid[i] < i) {
+				/* optimisation: if human+time is identical, copy across the combine with F stage */
+				const int ii = htid[i];
+				likelihood_prime[i] = likelihood_prime[ii];
+			} else {
+				likelihood_prime[i] = 0.0;
+				for(int j = 0; j < ng ; j++) {
+					likelihood_prime[i] += F_prime[j] * likelihood[i][j];
+				}
 			}
+			lik *= likelihood_prime[i] / likelihood[i][ng];
 		}
-		lik *= likelihood_prime[i] / likelihood[i][ng];
 	}
 
 	return lik;
 }
 
-void calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
+void Cluster::calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
 {
   	/* Assumes F is one larger than f */
 	for (int t = 0; t < f.nrows(); t++) {
@@ -282,6 +284,26 @@ void calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
 		for (int j = 0; j < F.ncols(); j++) {
 			F[t][j] /= fs;
 		}
+	}
+}
+
+void Cluster::calc_logit_F(const double *f, const int id, const double &f_prime, Vector<mydouble> &F)
+{
+  	/* Assumes F is one larger than f */
+	double fs = 0;
+	for (int j = 0; j < ng-1; j++) {
+		if (j == id) {
+			fs += exp(f_prime);
+			F[j].setlog(f_prime);	///< equivalent to F[j] = exp(f_prime)
+		} else {
+			fs += exp(f[j]);
+			F[j].setlog(f[j]);	///< equivalent to F[j] = exp(f[j])
+		}
+ 	}
+	F[ng-1].setlog(0); 			///< equivalent to F[ng-1] = 1
+	fs += 1;
+	for (int j = 0; j < F.size(); j++) {
+		F[j] /= fs;
 	}
 }
 
@@ -378,34 +400,40 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 	const double sigma_f = 1.0;
 
 	/* storage for results */
-	Matrix<double> f_prime(f.nrows(), f.ncols());
-	Matrix<mydouble> F_prime(F.nrows(), F.ncols());
+	Vector<mydouble> F_prime(ng);
 	Vector<mydouble> likelihood_prime(likelihood.nrows());
 
 	/* update each f value in turn */
 	for (int t = 0; t < f.nrows(); t++) {
 		for (int id = 0; id < f.ncols(); id++) {
-			f_prime = f;
-			f_prime[t][id] = ran.normal(f[t][id],sigma_f);
-			const double *alpha = ALPHA[id];
+			double f_prime = ran.normal(f[t][id],sigma_f);
 
-			calc_logit_F(f_prime,F_prime);
+			// OPTIMISATION: Not all of f changes - just f[t][i]
+			calc_logit_F(f[t], id, f_prime, F_prime);
 
 			// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
 			// Proposal is symmetric, so this drops down to the prior. Prior is N(alpha[0], alpha[1])
 			// exp((f-alpha)^2-(f'-alpha)^2)*2*tau))
+			const double *alpha = ALPHA[id];
 			double logalpha;
 			logalpha = ((f[t][id]-alpha[0])*(f[t][id]-alpha[0]) -
-					 (f_prime[t][id]-alpha[0])*(f_prime[t][id]-alpha[0]))*2*alpha[1];
+					 (f_prime-alpha[0])*(f_prime-alpha[0]))*2*alpha[1];
 			// Likelihood ratio
-			mydouble lik_ratio = calc_lik6(likelihood,likelihood_prime,F_prime);
+
+			// OPTIMISATION: All we need is the _change_ in likelihood due to F -> F_prime.
+			// The only change will be due to humans that have this time period, so that's one (huge) optimisation.
+			mydouble lik_ratio = calc_lik6(likelihood,likelihood_prime,F_prime,t);
 			double logtest = logalpha + lik_ratio.LOG();
 
 			if(logtest>=0.0 || ran.U() < exp(logtest)) {	// accept
-				f = f_prime;
-				F = F_prime;
-				for(int i = 0; i < likelihood.nrows(); i++)
-					likelihood[i][ng] = likelihood_prime[i];
+				f[t][id] = f_prime;
+				for (int i = 0; i < ng; i++)
+					F[t][i] = F_prime[i];
+				for(int i = 0; i < likelihood.nrows(); i++) {
+					if (htime[i] == t) {
+						likelihood[i][ng] = likelihood_prime[i];
+					}
+				}
 				accept_rate++;
 			}
 			else { // reject
