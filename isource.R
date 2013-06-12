@@ -1,6 +1,9 @@
-sc <- c("CHICKEN","CATTLE","SHEEP", "WATER/ENVIRONMENT")
-ng = length(sc)
-nt = 2 # TODO: Automate this
+sc <- c("Poultry","Cattle","Sheep", "Water/Environment", "Ruminants")
+o <- c(1,2,3,4)
+col = brewer.pal(8, "Set1")[c(5,1,2,3,4,7,8)]
+
+ng = 4  # TODO: Automate this
+nt = 32 # TODO: Automate this
 
 #########################
 ### READ IN THE FILES ###
@@ -8,7 +11,7 @@ nt = 2 # TODO: Automate this
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("out1")
+fnames = c("out2")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
@@ -26,6 +29,14 @@ g = t(g)/length(fnames)
 gd = mcmc$iter>=5000
 fd = fmcmc$iter>=10000
 
+# read in our humans and count times...
+humans <- read.table("humans.txt", header=T)
+num_times <- length(unique(humans[,ncol(humans)]));
+human_counts <- rep(0,num_times)
+for (i in 1:num_times)
+	human_counts[i] <- sum(humans[,ncol(humans)]==i)
+
+
 ################################################################
 ### PLOT 1                                                   ###
 ### VISUALISE DIRECTLY THE MCMC OUTPUT FOR PARAMETER F       ###
@@ -35,20 +46,28 @@ pdf(file=paste(fname,".pdf",sep=""), width=11, height=8)
 
 par(mfrow=c(3,2))
 for (t in 1:nt) {
-plot(fmcmc[fd,((t-1)*ng+2)],type="l",ylim=c(0,1),col=2,ylab="Proportion",main=paste("F, t=",t,sep=""))
-for(i in 2:ng) lines(fmcmc[fd,((t-1)*ng+i+1)],col=rainbow(ng)[i])
+plot(fmcmc[fd,((t-1)*ng+2)],type="l",ylim=c(0,1),col=col[o[1]],ylab="Proportion",main=paste("F, t=",t,sep=""))
+for(i in 2:ng) lines(fmcmc[fd,((t-1)*ng+i+1)],col=col[o[i]])
 }
-plot(fmcmc[fd,nt*ng+2],type="l",ylim=range(fmcmc[fd,nt*ng+2*1:(ng-1)]),col=2,ylab="Value",main="ALPHA")
-for(i in 2:(ng-1)) lines(fmcmc[fd,nt*ng+2*i],col=rainbow(ng)[i])
-plot(fmcmc[fd,nt*ng+3],type="l",ylim=range(fmcmc[fd,nt*ng+2*1:(ng-1)+1]),col=2,ylab="Value",main="TAU")
-for(i in 2:(ng-1)) lines(fmcmc[fd,nt*ng+2*i+1],col=rainbow(ng)[i])
+for (t in 0:nt) {
+plot(fmcmc[fd,nt*ng+t*(ng-1)+2],type="l",ylim=c(-3,3),col=col[o[1]],ylab="Proportion",main=paste("f, t=",t,sep=""))
+for(i in 2:ng-1) lines(fmcmc[fd,nt*ng+t*(ng-1)+i+1],col=col[o[i]])
+}
 
-plot(density(fmcmc[fd,nt*ng+2]), xlim=range(fmcmc[fd,nt*ng+2*1:(ng-1)]), col=2,main="ALPHA")
-for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+2*i]),col=rainbow(ng)[i])
+off <- nt*ng + (nt+1)*(ng-1)
+plot(fmcmc[fd,off+2],type="l",ylim=range(fmcmc[fd,off+3*1:(ng-1)-1]),col=2,ylab="Value",main="mu")
+for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i-1],col=i+1)
+plot(fmcmc[fd,off+3],type="l",ylim=range(fmcmc[fd,off+3*1:(ng-1)+0]),col=2,ylab="Value",main="rho")
+for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+0],col=i+1)
+plot(fmcmc[fd,off+4],type="l",ylim=range(fmcmc[fd,off+3*1:(ng-1)+1]),col=2,ylab="Value",main="tau")
+for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+1],col=i+1)
 
-plot(density(fmcmc[fd,nt*ng+3]), xlim=range(fmcmc[fd,nt*ng+2*1:(ng-1)+1]), col=2,main="ALPHA")
-for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+2*i+1]),col=rainbow(ng)[i])
-
+plot(density(fmcmc[fd,off+2]), xlim=range(fmcmc[fd,off+3*1:(ng-1)-1]), col=2,main="mu")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,off+3*i-1]),col=i+1)
+plot(density(fmcmc[fd,off+3]), xlim=range(fmcmc[fd,off+3*1:(ng-1)+0]), col=2,main="rho")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,off+3*i+0]),col=i+1)
+plot(density(fmcmc[fd,off+4]), xlim=range(fmcmc[fd,off+3*1:(ng-1)+1]), col=2,main="tau")
+for(i in 2:(ng-1)) lines(density(fmcmc[fd,off+3*i+1]),col=i+1)
 
 
 #############################################################
@@ -58,26 +77,26 @@ for(i in 2:(ng-1)) lines(density(fmcmc[fd,nt*ng+2*i+1]),col=rainbow(ng)[i])
 #############################################################
 par(mfrow=c(2,2))
 ### PLOT THE HISTOGRAMS
-for (t in 1:nt) {
-	for(i in 1:ng)
-		hist(fmcmc[fd,(t-1)*ng+(1+i)],30,col=rainbow(ng)[i],main=paste(sc[i]," t=",t,sep=""),prob=T,xlim=c(0,1),xlab="Proportion")
-}
+#for (t in 1:nt) {
+#	for(i in 1:ng)
+#		hist(fmcmc[fd,(t-1)*ng+(1+i)],30,col=rainbow(ng)[i],main=paste(sc[i]," t=",t,sep=""),prob=T,xlim=c(0,1),xlab="Proportion")
+#}
 
 ########################################################
 ### TABLE 1                                          ###
 ### SUMMARIES OF THE POSTERIOR DISTRIBUTIONS OF F[i] ###
 ########################################################
 for (t in 1:nt) {
-	print(paste("testing line",t,"\n"))
-	df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]; names(df) <- sc;
+	df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]; names(df) <- sc[o];
 	pe = apply(df,2,function(x)c("mean"=mean(x),"median"=median(x),"sd"=sd(x),quantile(x,c(.025,.975))))
 	print(pe)
-
+}
 #################################################################
 ### TABLE 2                                                   ###
 ### PROBABILITY THAT EACH SOURCE IS RESPONSIBLE FOR THE MOST, ###
 ### SECOND MOST, THIRD MOST, ETC, NUMBER OF CASES             ###
 #################################################################
+if (0) {
 	od = t(apply(df,1,order,decreasing=T))
 ### THE TABLE
 	print(apply(od,2,function(x)table(factor(x,levels=1:ng,labels=sc)))/nrow(df))
@@ -87,26 +106,117 @@ for (t in 1:nt) {
 	print(sc[od[which(enc==encmode)[1],]])
 ### POSTERIOR PROBABILITY OF THIS, THE MOST LIKELY ORDER
 	print(max(table(enc))/nrow(df))
+}
 
 
 #################################################################################
 ### PLOT 3                                                                    ###
 ### BARCHART OF THE ESTIMATED PROPORTION OF CASES ATTRIBUTABLE TO EACH SOURCE ###
 #################################################################################
-	par(mfrow=c(1,1)) # update me for times
-	mp = barplot(pe[1,],col=rainbow(ng),ylim=c(0,1),ylab="Proportion of human cases")
-	segments(mp,pe[4,],mp,pe[5,],lwd=2)
+par(mfrow=c(1,1))
+
+# proportions
+if (1) {
+	x = c(0,seq(1.5,nt-1.5),nt,nt,seq(nt-1.5,1.5),0)
+	g <- matrix(0,nt,ng)
+	for (t in 1:nt) {
+		df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]; names(df) <- sc[o];
+		pe = apply(df,2,function(x)c("mean"=mean(x),"median"=median(x),"sd"=sd(x),quantile(x,c(.025,.975))))
+		g[t,] = pe[1,];
+	}
+
+	prop = matrix(0, nrow = nt, ncol = ng+1)
+	for(j in 1:ng)
+		prop[,j+1] = prop[,j] + g[,j]
+	print(prop)
+	ymax <- 1
+
+	alpha <- "7F"
+	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Proportion of human cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i")
+	for(j in 1:ng)
+	{  
+	  y = c(prop[,j],rev(prop[,j+1]))
+	  polygon(x,y,col=paste(col[o[j]],alpha,sep=""))
+	}
+
+	for (i in 1:8)
+	   	mtext(2004+i, 1, line=0.5, at=4*i-2)
+	for(i in 0:(ymax/10))
+		mtext(i*10,2,line=1,at=i*10)
+
+	legend("bottomleft", labels=sc[o], col=col[o])
+}
+
+# totals
+if (1) {
+	x = c(0,seq(1.5,nt-1.5),nt,nt,seq(nt-1.5,1.5),0)
+	g <- matrix(0,nt,ng)
+	for (t in 1:nt) {
+		df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]*human_counts[t]; names(df) <- sc[o];
+		pe = apply(df,2,function(x)c("mean"=mean(x),"median"=median(x),"sd"=sd(x),quantile(x,c(.025,.975))))
+		g[t,] = pe[1,];
+	}
+
+	prop = matrix(0, nrow = nt, ncol = ng+1)
+	for(i in 1:ng)
+		prop[,i+1] = prop[,i] + g[,i]
+	ymax <- 80
+
+	alpha <- "7F"
+	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i")
+	for(j in 1:ng)
+	{  
+	  y = c(prop[,j],rev(prop[,j+1]))
+	  polygon(x,y,col=paste(col[o[j]],alpha,sep=""))
+	}
+
+	for (i in 1:8)
+	   	mtext(2004+i, 1, line=0.5, at=4*i-2)
+	for(i in 0:(ymax/10))
+		mtext(i*10,2,line=1,at=i*10)
+
+	legend("topright", labels=sc[o], col=col[o])
+}
+
+# totals per source
+for (j in 1:ng)
+{
+	x = c(0,seq(1.5,nt-1.5),nt)
+
+	pee <- matrix(0,nt,3)
+	for (t in 1:nt) {
+		df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]*human_counts[t]; names(df) <- sc[o];
+		pe = apply(df,2,function(x)c("mean"=mean(x),quantile(x,c(.025,.975))))
+		pee[t,] <- pe[,j]
+  	}
+
+	ymax <- 80
+
+	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i", main=sprintf("Cases attributed to %s", sc[o[j]]))
+	y = c(pee[,2],rev(pee[,3]))
+	polygon(c(x,rev(x)),y,col="grey80", border="grey80")
+	lines(x, pee[,1], col="black", lwd="2")
+
+	for (i in 1:8)
+		mtext(2004+i, 1, line=0.5, at=4*i-2)
+	for(i in 0:(ymax/10))
+		mtext(i*10,2,line=1,at=i*10)
+
+box()
+}
+
 
 #################################################################
 ### TABLE 3                                                   ###
 ### MOST PROBABLE ORDERINGS AND THEIR POSTERIOR PROBABILITIES ###
 #################################################################
+if (0) {
 	enc_od = as.numeric(levels(factor(enc)))[order(table(enc),decreasing=TRUE)]
 	enc_pr = table(enc)[order(table(enc),decreasing=TRUE)]/nrow(df)
 	unenc_od = t(sapply(enc_od,function(i) sc[od[which(enc==i)[1],]]))
 	print(cbind(unenc_od,"Posterior probability"=enc_pr)[enc_pr>.05,])
 
-### Ordering of top 3 no. cases: full order
+## Ordering of top 3 no. cases: full order
 	good = apply(od[,1:3],1,function(x)all(sort(x)==c(1,2,5)))
 	odg = od[good,1:3]
 	encg = apply(odg,1,function(x) sum(x*((0:2)^3)))
@@ -122,11 +232,11 @@ for (t in 1:nt) {
 #################################################
 ### 3 BY 3 PANE
 par(mfrow=c(2,2))
-COL = c(rainbow(ng),"black");
+COL = col[c(o,6)];
 for(i in 0:(ng-1)) {
-  plot(mcmc$iter[gd],mcmc[[paste("A",i,0,"",sep=".")]][gd],type="l",col=COL[1],ylim=c(0,1),xlab="iter",ylab="M,R",main=sc[i+1])
+  plot(mcmc$iter[gd],mcmc[[paste("A",i,0,"",sep=".")]][gd],type="l",col=COL[1],ylim=c(0,1),xlab="iter",ylab="M,R",main=sc[o[i+1]])
   for(j in 2:(ng+1)) lines(mcmc$iter[gd],mcmc[[paste("A",i,j-1,"",sep=".")]][gd],col=COL[j])
-  lines(mcmc$iter[gd],mcmc[[paste("r",i,sep="")]][gd],col="grey")
+  lines(mcmc$iter[gd],mcmc[[paste("r",i,sep="")]][gd],col=col[7])
 }
 
 #################################################
@@ -134,11 +244,11 @@ for(i in 0:(ng-1)) {
 ### PIE CHARTS OF THE EVOLUTIONARY PARAMETERS ###
 #################################################
 par(mfrow=c(2,2))
-COL = c(rainbow(ng),"black");
+COL = col[c(o,6)];
 for(i in 0:(ng-1)) {
   wh0 = which(names(mcmc)==paste("A",i,0,"",sep="."))
   whng = which(names(mcmc)==paste("A",i,ng,"",sep="."))
-  pie(apply(mcmc[gd,wh0:whng],2,mean),col=COL,labels="",main=sc[i+1],col.main=COL[i+1],radius=1.,border="white")
+  pie(apply(mcmc[gd,wh0:whng],2,mean),col=COL,labels="",main=sc[o[i+1]],radius=1.)
 }
 
 dev.off()
@@ -147,29 +257,31 @@ dev.off()
 ### PLOT 6                                           ###
 ### POSTERIOR PROBABILITY OF SOURCE FOR EACH ISOLATE ###
 ########################################################
-cod = c(1,2,3,4)
-G = g[,cod]
-od = order(G[,1],G[,2],G[,3],G[,4])
-res = 1000
-tp = apply(G,1,function(x)sort(sample(1:ncol(G),res,replace=TRUE,prob=x)))
-stretch = function(x,res) {
-  y = floor(x*res)
-  while(sum(y)<res) {
-    i = which.max( abs(y/sum(y)-x) )
-    y[i] = y[i]+1
-  }
-  rep(1:length(x),times=y)
+if (0) {
+	cod = c(1,2,3,4)
+	G = g[,cod]
+	od = order(G[,1],G[,2],G[,3],G[,4])
+	res = 1000
+	tp = apply(G,1,function(x)sort(sample(1:ncol(G),res,replace=TRUE,prob=x)))
+	stretch = function(x,res) {
+	  y = floor(x*res)
+	  while(sum(y)<res) {
+	    i = which.max( abs(y/sum(y)-x) )
+	    y[i] = y[i]+1
+	  }
+	  rep(1:length(x),times=y)
+	}
+	tp2 = apply(G,1,stretch,res)
+
+	### DO THE PLOT
+	par(mfrow=c(1,2))
+	image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
+
+	### DO THE PLOT, BUT RE-ORDERED
+	wm = apply(G,1,which.max)
+	od = rev(order(wm!=4,wm!=5,G[,1],G[,2],G[,3]))
+	image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
 }
-tp2 = apply(G,1,stretch,res)
-
-### DO THE PLOT
-par(mfrow=c(1,2))
-#image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
-
-### DO THE PLOT, BUT RE-ORDERED
-wm = apply(G,1,which.max)
-od = rev(order(wm!=4,wm!=5,G[,1],G[,2],G[,3],G[,4]))
-#image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
 
 ##########################################################
 ### TABLE 4                                            ###
@@ -181,7 +293,7 @@ od = rev(order(wm!=4,wm!=5,G[,1],G[,2],G[,3],G[,4]))
 ### YOU TO CONSTRUCT A CONDENSED LIST OF ST-SPECIFIC   ###
 ### SOURCE ATTRIBUTION PROBABILITIES                   ###
 ##########################################################
-colnames(g) <- sc
+colnames(g) <- sc[o]
 print(g)
 
 dev.off()
