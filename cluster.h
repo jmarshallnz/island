@@ -183,7 +183,7 @@ public:
 	void posteriorP6g(const char* param_file, Random &ran, const char* out_file);
 
 	void calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F);
-	void calc_logit_F(const double *f, int id, const double &f_prime, Vector<mydouble> &F);
+	void calc_logit_F(const Matrix<double> &f, int t, int id, const double &f_prime, Vector<mydouble> &F);
 	void init_priors(Matrix<double> &ALPHA, Random &ran);
 	void update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran);
 	void init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran);

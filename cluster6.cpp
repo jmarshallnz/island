@@ -273,13 +273,13 @@ mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble>
 void Cluster::calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
 {
   	/* Assumes F is one larger than f */
-	for (int t = 1; t < f.nrows(); t++) {
+	for (int t = 1; t < f.ncols(); t++) {
 		double fs = 0;
-		for (int j = 0; j < f.ncols(); j++) {
-			fs += exp(f[t][j]);
-			F[t-1][j].setlog(f[t][j]);	///< equivalent to F[t][j] = exp(f[t][j])
+		for (int j = 0; j < f.nrows(); j++) {
+			fs += exp(f[j][t]);
+			F[t-1][j].setlog(f[j][t]);	///< equivalent to F[t][j] = exp(f[j][t])
   		}
-		F[t-1][f.ncols()].setlog(0); 		///< equivalent to F[t][f.ncols()] = 1
+		F[t-1][f.nrows()].setlog(0); 		///< equivalent to F[t][f.nrows()] = 1
 		fs += 1;
 		for (int j = 0; j < F.ncols(); j++) {
 			F[t-1][j] /= fs;
@@ -287,7 +287,7 @@ void Cluster::calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
 	}
 }
 
-void Cluster::calc_logit_F(const double *f, const int id, const double &f_prime, Vector<mydouble> &F)
+void Cluster::calc_logit_F(const Matrix<double> &f, const int t, const int id, const double &f_prime, Vector<mydouble> &F)
 {
   	/* Assumes F is one larger than f */
 	double fs = 0;
@@ -296,8 +296,8 @@ void Cluster::calc_logit_F(const double *f, const int id, const double &f_prime,
 			fs += exp(f_prime);
 			F[j].setlog(f_prime);	///< equivalent to F[j] = exp(f_prime)
 		} else {
-			fs += exp(f[j]);
-			F[j].setlog(f[j]);	///< equivalent to F[j] = exp(f[j])
+			fs += exp(f[j][t]);
+			F[j].setlog(f[j][t]);	///< equivalent to F[j] = exp(f[j][t])
 		}
  	}
 	F[ng-1].setlog(0); 			///< equivalent to F[ng-1] = 1
@@ -351,7 +351,7 @@ void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 	/* Priors */
 	const double Alpha_mu = 0, Alpha_prec = 0.01;	///< Means
 	const double Beta_mu = 0, Beta_prec = 0.1;    	///< Auto-correlation
-	const double Tau_shape = 0.01, Tau_rate = 0.01;	///< Precision
+	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
 	for(int j = 0; j < ALPHA.nrows(); j++) {
 		ALPHA[j][0] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
@@ -363,9 +363,9 @@ void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 void Cluster::init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran)
 {
 	/* f[t][i] ~ Normal(ALPHA[j], TAU[j]) */
-	for (int t = 0; t < f.nrows(); t++) {
-		for (int j = 0; j < f.ncols(); j++) {
-			f[t][j] = 0; //ran.normal(ALPHA[j][0], 1/sqrt(ALPHA[j][0]));
+	for (int j = 0; j < f.nrows(); j++) {
+		for (int t = 0; t < f.ncols(); t++) {
+			f[j][t] = 0; //ran.normal(ALPHA[j][0], 1/sqrt(ALPHA[j][0]));
 		}
 	}
 }
@@ -377,7 +377,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	const double Beta_mu = 0, Beta_prec = 1;       ///< Auto-correlation
 	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
-	const int T = f.nrows()-1;
+	const int T = f.ncols()-1;
 	double rss = 0; // for tau update
 	for (int i = 0; i < ALPHA.nrows(); i++) {
 		double mu  = ALPHA[i][0];	///< Mean (TODO: Add other factors)
@@ -389,7 +389,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		double sy = y;
 		double syy = y*y;
 		for (int t = 1; t <= T; t++) {
-			y = f[t][i] - rho*f[t-1][i];
+			y = f[i][t] - rho*f[i][t-1];
 			// x = ...
 			sy += y;
 			syy += y*y;
@@ -401,17 +401,17 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		double mu_post = (Alpha_mu*Alpha_prec + mu_hat*tau) / prec_post;
 		double mu_cand = ran.normal(mu_post, 1/sqrt(prec_post));
 		if (mu_cand < -10 || mu_cand > 10) {
-			cout << "WARNING: mu appears to be silly, ignoring" << endl;
+			cout << "WARNING: mu appears to be silly: mu=" << mu_cand << " mu_post=" << mu_post << endl;
 			mu_cand = mu;
 		}
 		mu = mu_cand;
 
 		// Step 3: Compute new residuals
-		double e, e0 = f[0][i] - mu_hat;
+		double e, e0 = f[i][0] - mu_hat;
 		double rsxx = e0*e0;
 		double rsyy = 0, rsxy = 0;
 		for (int t = 1; t < T; t++) {
-			e = f[t][i] - mu;
+			e = f[i][t] - mu;
 			rsyy += e*e;
 			rsxy += e*e0;
 			e0 = e;
@@ -440,8 +440,8 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	double shape = Tau_shape + T*ALPHA.nrows()/2;
 	double rate = Tau_rate + rss/2;
 	double tau = ran.gamma(1/rate, shape);
+	tau = 0.1; // TEST
 	for (int i=0; i < ALPHA.nrows(); i++) {
-		tau = 0.1; // TEST
 		ALPHA[i][2] = tau;
 	}
 }
@@ -460,26 +460,26 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 	Vector<mydouble> likelihood_prime(likelihood.nrows());
 
 	/* update f[0] f ~ Normal(mu+rho*(f[1]-mu), tau) */
-	for (int loop = 0; loop < f.ncols(); loop++) {
-		int id = ran.discrete(0, f.ncols()-1);
+	for (int loop = 0; loop < f.nrows(); loop++) {
+		int id = ran.discrete(0, f.nrows()-1);
 		const double mu = ALPHA[id][0];
 		const double rho = ALPHA[id][1];
 		const double tau = ALPHA[id][2];
-		double e0 = rho*(f[1][id]-mu) + ran.Z() / sqrt(tau);
-		f[0][id] = mu + e0;
+		double e0 = rho*(f[id][1]-mu) + ran.Z() / sqrt(tau);
+		f[id][0] = mu + e0;
 	}
 	/* update each f value in turn RANDOMLY */
-	for (int loop = 0; loop < (f.nrows()-1) * f.ncols(); loop++) {
-		int t = ran.discrete(1, f.nrows()-1);
-		int id = ran.discrete(0, f.ncols()-1);
+	for (int loop = 0; loop < (f.ncols()-1) * f.nrows(); loop++) {
+		int t = ran.discrete(1, f.ncols()-1);
+		int id = ran.discrete(0, f.nrows()-1);
 
 		// NOTE: t here refers to the index into f.  Note that the index into F
 		//       will be t-1
 
-		double f_prime = ran.normal(f[t][id],sigma_f[id]);
+		double f_prime = ran.normal(f[id][t],sigma_f[id]);
 
-		// OPTIMISATION: Not all of f changes - just f[t][i]
-		calc_logit_F(f[t], id, f_prime, F_prime);
+		// OPTIMISATION: Not all of f changes - just f[id][t]
+		calc_logit_F(f, t, id, f_prime, F_prime);
 
 		// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
 		// Proposal is symmetric, so this drops down to the prior. Prior is N(mu, tau)
@@ -497,12 +497,12 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 		double mu = alpha[0]*(1-alpha[1]);
 		double tau = alpha[2];
 		if (t < ntime-1) {
-			mu += alpha[1]*(f[t-1][id] + f[t+1][id])/2;
+			mu += alpha[1]*(f[id][t-1] + f[id][t+1])/2;
 			tau += alpha[2];
 		} else {
-			mu += alpha[1]*f[t-1][id];
+			mu += alpha[1]*f[id][t-1];
 		}
-		double logalpha = ((f[t][id]-mu)*(f[t][id]-mu) - (f_prime-mu)*(f_prime-mu))*tau/2;
+		double logalpha = ((f[id][t]-mu)*(f[id][t]-mu) - (f_prime-mu)*(f_prime-mu))*tau/2;
 
 		// OPTIMISATION: All we need is the _change_ in likelihood due to F -> F_prime.
 		// The only change will be due to humans that have this time period, so that's one (huge) optimisation.
@@ -510,7 +510,7 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 		double logtest = logalpha + lik_ratio.LOG();
 
 		if(logtest>=0.0 || ran.U() < exp(logtest)) {	// accept
-			f[t][id] = f_prime;
+			f[id][t] = f_prime;
 			for (int i = 0; i < ng; i++)
 				F[t-1][i] = F_prime[i];	// t-1 due to f being shifted by 1
 			for(int i = 0; i < likelihood.nrows(); i++) {
@@ -612,7 +612,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 
 	/* Source probabilities */
 	Matrix<double> ALPHA(ng-1, 3, 0);			///< Mean/Precision of assignment proportion (logit scale)
-	Matrix<double> f(ntime+1,ng-1,0), f_prime(ntime+1,ng-1);	///< F values on the logit scale
+	Matrix<double> f(ng-1,ntime+1,0), f_prime(ng-1,ntime+1);	///< F values on the logit scale
 	Matrix<mydouble> F(ntime,ng), F_prime(ntime,ng);	///< Probability of source
 
 	/* Output to file */
@@ -675,7 +675,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 					// f
 					for (int t = 0; t < ntime+1; t++) {
 						for(i=0;i<ng-1;i++) {
-							o3 << tab << f[t][i];
+							o3 << tab << f[i][t];
 						}
 					}
 					// ALPHA
