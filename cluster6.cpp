@@ -259,7 +259,7 @@ mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble>
 				likelihood_prime[i] = likelihood_prime[ii];
 			} else {
 				likelihood_prime[i] = 0.0;
-				for(int j = 0; j < ng ; j++) {
+				for(int j = 0; j < ng; j++) {
 					likelihood_prime[i] += F_prime[j] * likelihood[i][j];
 				}
 			}
@@ -574,11 +574,13 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 				/* Output */
 				if(fiter%100==0) {
 					o3 << fiter;
+					// F
 					for (int t = 0; t < ntime; t++) {
 						for(i=0;i<ng;i++) {
 							o3 << tab << F[t][i].todouble();
 						}
 					}
+					// ALPHA
 					for (int i = 0; i < ALPHA.nrows(); i++) {
 						for (int j = 0; j < ALPHA.ncols(); j++) {
 							o3 << tab << ALPHA[i][j];
