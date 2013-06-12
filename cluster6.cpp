@@ -273,16 +273,16 @@ mydouble Cluster::calc_lik6(const Matrix<mydouble> &likelihood, Vector<mydouble>
 void Cluster::calc_logit_F(const Matrix<double> &f, Matrix<mydouble> &F)
 {
   	/* Assumes F is one larger than f */
-	for (int t = 0; t < f.nrows(); t++) {
+	for (int t = 1; t < f.nrows(); t++) {
 		double fs = 0;
 		for (int j = 0; j < f.ncols(); j++) {
 			fs += exp(f[t][j]);
-			F[t][j].setlog(f[t][j]);	///< equivalent to F[t][j] = exp(f[t][j])
+			F[t-1][j].setlog(f[t][j]);	///< equivalent to F[t][j] = exp(f[t][j])
   		}
-		F[t][f.ncols()].setlog(0); 		///< equivalent to F[t][f.ncols()] = 1
+		F[t-1][f.ncols()].setlog(0); 		///< equivalent to F[t][f.ncols()] = 1
 		fs += 1;
 		for (int j = 0; j < F.ncols(); j++) {
-			F[t][j] /= fs;
+			F[t-1][j] /= fs;
 		}
 	}
 }
@@ -329,11 +329,16 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	o3 << "iter";
 	for (int t = 0; t < ntime; t++) {
 		for(i=0;i<ng;i++) {
+			o3 << tab << "t" << t << "F" << i;
+		}
+	}
+	for (int t = 0; t < ntime+1; t++) {
+		for(i=0;i<ng-1;i++) {
 			o3 << tab << "t" << t << "f" << i;
 		}
 	}
 	for (int i = 0; i < ng-1; i++) {
-		for (int j = 0; j < 2; j++) {
+		for (int j = 0; j < 3; j++) {
 			o3 << tab << "ALPHA" << i << "_" << j;
 		}
 	}
@@ -344,12 +349,14 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 {
 	/* Priors */
-	const double Alpha_mu = 0, Alpha_prec = 0.1;
-	const double Tau_shape = 0.1, Tau_rate = 0.1;
+	const double Alpha_mu = 0, Alpha_prec = 0.01;	///< Means
+	const double Beta_mu = 0, Beta_prec = 0.1;    	///< Auto-correlation
+	const double Tau_shape = 0.01, Tau_rate = 0.01;	///< Precision
 
 	for(int j = 0; j < ALPHA.nrows(); j++) {
 		ALPHA[j][0] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
-		ALPHA[j][1]   = Tau_shape/Tau_rate; 	//ran.gamma(1/Tau_rate, Tau_shape);
+		ALPHA[j][1] = Beta_mu;			//ran.normal(Beta_mu, 1/sqrt(Beta_prec));
+		ALPHA[j][2] = Tau_shape/Tau_rate;	//ran.gamma(1/Tau_rate, Tau_shape);
 	}
 }
 
@@ -366,83 +373,171 @@ void Cluster::init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran
 void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran)
 {
 	/* Priors */
-	const double Alpha_mu = 0, Alpha_prec = 0.1;
-	const double Tau_shape = 0.1, Tau_rate = 0.1;
+	const double Alpha_mu = 0, Alpha_prec = 0.1;	///< Means
+	const double Beta_mu = 0, Beta_prec = 1;       ///< Auto-correlation
+	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
+	const int T = f.nrows()-1;
+	double rss = 0; // for tau update
 	for (int i = 0; i < ALPHA.nrows(); i++) {
-		/* update ALPHA[i][0]
-		 posterior params will be (Alpha_mu*Alpha_prec + TAU[i]*sum(F[][i])) / (Alpha_prec + n*TAU[i])
-		 */
-		double s = 0;
-		double ss = 0;
-		for (int t = 0; t < f.nrows(); t++) {
-			s += f[t][i];
-			ss += f[t][i]*f[t][i];
+		double mu  = ALPHA[i][0];	///< Mean (TODO: Add other factors)
+		double rho = ALPHA[i][1];	///< Auto-correlation
+		double tau = ALPHA[i][2];	///< Precision
+
+		// Step 1: Regress f[t]-rho*f[t-1] ~ (X[t]-rho*X[t-1]) * theta
+		double y = sqrt(1 - rho*rho);
+		double sy = y;
+		double syy = y*y;
+		for (int t = 1; t <= T; t++) {
+			y = f[t][i] - rho*f[t-1][i];
+			// x = ...
+			sy += y;
+			syy += y*y;
 		}
-		double prec = Alpha_prec + ntime*ALPHA[i][1];
-		double mu = (Alpha_mu*Alpha_prec + s*ALPHA[i][1]) / prec;
-		ALPHA[i][0] = ran.normal(mu, 1/sqrt(prec)); /* ran.normal takes sd=1/sqrt(precision) */
-		/* update ALPHA[i][1]
-		 posterior params will be (Tau_a + n/2, Tau_b + sum(F-mu)^2/2)
-		 */
-		double shape = Tau_shape + ntime/2;
-		double rate = Tau_rate + (ntime*ss-s*s)/(2*ntime);
-		ALPHA[i][1] = ran.gamma(1/rate, shape);
+		double mu_hat = sy/ntime/(1-rho);
+
+		// Step 2: Update theta
+		double prec_post = Alpha_prec + ntime*tau*(1-rho*rho);
+		double mu_post = (Alpha_mu*Alpha_prec + mu_hat*tau) / prec_post;
+		double mu_cand = ran.normal(mu_post, 1/sqrt(prec_post));
+		if (mu_cand < -10 || mu_cand > 10) {
+			cout << "WARNING: mu appears to be silly, ignoring" << endl;
+			mu_cand = mu;
+		}
+		mu = mu_cand;
+
+		// Step 3: Compute new residuals
+		double e, e0 = f[0][i] - mu_hat;
+		double rsxx = e0*e0;
+		double rsyy = 0, rsxy = 0;
+		for (int t = 1; t < T; t++) {
+			e = f[t][i] - mu;
+			rsyy += e*e;
+			rsxy += e*e0;
+			e0 = e;
+		}
+		rsxx += rsyy - e*e;
+
+		double rho_hat = rsxy/rsxx;
+		double sigma_hat = (rsyy - rho_hat*rsxy)/(T-1);
+
+		// Step 4: Update rho from N(sxy/(pb + sxx), s^2/(pb + sxx))
+		double rho_post = rsxy / (Beta_prec + rsxx);
+		double sigma_post = sqrt(sigma_hat / (Beta_prec + rsxx));
+		rho = rho_post + sigma_post*ran.Z();
+		int rho_count = 0;
+		while (fabs(rho) >= 0.999)	///< ensure a truncated normal distribution
+		{
+			rho = rho_post + sigma_post*ran.Z();
+			rho_count++;
+		}
+
+		rss += rsyy - 2*rho*rsxy + rho*rho*rsxx;
+		ALPHA[i][0] = mu;
+		ALPHA[i][1] = rho;
+	}
+	// Step 5: Update tau from IG(v0 + n/2, vs + rss/2)
+	double shape = Tau_shape + T*ALPHA.nrows()/2;
+	double rate = Tau_rate + rss/2;
+	double tau = ran.gamma(1/rate, shape);
+	for (int i=0; i < ALPHA.nrows(); i++) {
+		tau = 0.1; // TEST
+		ALPHA[i][2] = tau;
 	}
 }
 
 void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> &likelihood, const Matrix<double> &ALPHA, Random &ran)
 {
-	static int accept_rate = 0;
-	static int reject_rate = 0;
+	static Vector<int> accept_rate(ng-1,0);
+	static Vector<int> reject_rate(ng-1,0);
+	static int updates = 0;
 
 	/* MH proposal parameters */
-	const double sigma_f = 1.0;
+	Vector<double> sigma_f(ng-1,1.0);
 
 	/* storage for results */
 	Vector<mydouble> F_prime(ng);
 	Vector<mydouble> likelihood_prime(likelihood.nrows());
 
-	/* update each f value in turn */
-	for (int t = 0; t < f.nrows(); t++) {
-		for (int id = 0; id < f.ncols(); id++) {
-			double f_prime = ran.normal(f[t][id],sigma_f);
+	/* update f[0] f ~ Normal(mu+rho*(f[1]-mu), tau) */
+	for (int loop = 0; loop < f.ncols(); loop++) {
+		int id = ran.discrete(0, f.ncols()-1);
+		const double mu = ALPHA[id][0];
+		const double rho = ALPHA[id][1];
+		const double tau = ALPHA[id][2];
+		double e0 = rho*(f[1][id]-mu) + ran.Z() / sqrt(tau);
+		f[0][id] = mu + e0;
+	}
+	/* update each f value in turn RANDOMLY */
+	for (int loop = 0; loop < (f.nrows()-1) * f.ncols(); loop++) {
+		int t = ran.discrete(1, f.nrows()-1);
+		int id = ran.discrete(0, f.ncols()-1);
 
-			// OPTIMISATION: Not all of f changes - just f[t][i]
-			calc_logit_F(f[t], id, f_prime, F_prime);
+		// NOTE: t here refers to the index into f.  Note that the index into F
+		//       will be t-1
 
-			// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
-			// Proposal is symmetric, so this drops down to the prior. Prior is N(alpha[0], alpha[1])
-			// exp((f-alpha)^2-(f'-alpha)^2)*2*tau))
-			const double *alpha = ALPHA[id];
-			double logalpha;
-			logalpha = ((f[t][id]-alpha[0])*(f[t][id]-alpha[0]) -
-					 (f_prime-alpha[0])*(f_prime-alpha[0]))*2*alpha[1];
-			// Likelihood ratio
+		double f_prime = ran.normal(f[t][id],sigma_f[id]);
 
-			// OPTIMISATION: All we need is the _change_ in likelihood due to F -> F_prime.
-			// The only change will be due to humans that have this time period, so that's one (huge) optimisation.
-			mydouble lik_ratio = calc_lik6(likelihood,likelihood_prime,F_prime,t);
-			double logtest = logalpha + lik_ratio.LOG();
+		// OPTIMISATION: Not all of f changes - just f[t][i]
+		calc_logit_F(f[t], id, f_prime, F_prime);
 
-			if(logtest>=0.0 || ran.U() < exp(logtest)) {	// accept
-				f[t][id] = f_prime;
-				for (int i = 0; i < ng; i++)
-					F[t][i] = F_prime[i];
-				for(int i = 0; i < likelihood.nrows(); i++) {
-					if (htime[i] == t) {
-						likelihood[i][ng] = likelihood_prime[i];
-					}
+		// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f)
+		// Proposal is symmetric, so this drops down to the prior. Prior is N(mu, tau)
+		// exp((f-mu)^2-(f'-mu)^2)/2*tau))
+
+		// if (t < n)
+		//   e[t] ~ Normal(rho*(e[t-1] + e[t+1])/2, tau*2)
+		// else
+		//   e[t] ~ Normal(rho*(e[t-1]), tau)
+		// thus
+		//   f[t] ~ Normal(mu + rho*(f[t-1] + f[t+1] - 2*mu)/2, tau*2)
+		// or
+		//   f[t] ~ Normal(mu + rho*(f[t-1] - mu), tau)
+		const double *alpha = ALPHA[id];
+		double mu = alpha[0]*(1-alpha[1]);
+		double tau = alpha[2];
+		if (t < ntime-1) {
+			mu += alpha[1]*(f[t-1][id] + f[t+1][id])/2;
+			tau += alpha[2];
+		} else {
+			mu += alpha[1]*f[t-1][id];
+		}
+		double logalpha = ((f[t][id]-mu)*(f[t][id]-mu) - (f_prime-mu)*(f_prime-mu))*tau/2;
+
+		// OPTIMISATION: All we need is the _change_ in likelihood due to F -> F_prime.
+		// The only change will be due to humans that have this time period, so that's one (huge) optimisation.
+		mydouble lik_ratio = calc_lik6(likelihood,likelihood_prime,F_prime,t-1);
+		double logtest = logalpha + lik_ratio.LOG();
+
+		if(logtest>=0.0 || ran.U() < exp(logtest)) {	// accept
+			f[t][id] = f_prime;
+			for (int i = 0; i < ng; i++)
+				F[t-1][i] = F_prime[i];	// t-1 due to f being shifted by 1
+			for(int i = 0; i < likelihood.nrows(); i++) {
+				if (htime[i] == t-1) {
+					likelihood[i][ng] = likelihood_prime[i];
 				}
-				accept_rate++;
 			}
-			else { // reject
-				reject_rate++;
+			accept_rate[id]++;
+		}
+		else { // reject
+			reject_rate[id]++;
+		}
+		updates++;
+	}
+	if (updates % 600000 == 0) {
+		cout << "A/R rate for F after " << accept_rate[0] + reject_rate[0] << " iterations is";
+		for (int i = 0; i < ng-1; i++)
+			cout << " " << (double)accept_rate[i] / (accept_rate[i]+reject_rate[i]);
+		cout << endl;
+		// current F's
+		for (int t = 0; t < 28; t++) {
+			for (int id = 0; id < ng; id++) {
+				cout << F[t][id].todouble() << "\t";
 			}
+			cout << endl;
 		}
 	}
-//	if ((accept_rate + reject_rate) % 60000 == 0)
-//		cout << "A/R rate for F after " << accept_rate + reject_rate << " iterations is " << (double)accept_rate / (accept_rate+reject_rate) << endl;
 }
 
 /* This version uses the clonal frame version of the likelihood */
@@ -516,8 +611,8 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
 
 	/* Source probabilities */
-	Matrix<double> ALPHA(ng-1, 2, 0);			///< Mean/Precision of assignment proportion (logit scale)
-	Matrix<double> f(ntime,ng-1,0), f_prime(ntime,ng-1);	///< F values on the logit scale
+	Matrix<double> ALPHA(ng-1, 3, 0);			///< Mean/Precision of assignment proportion (logit scale)
+	Matrix<double> f(ntime+1,ng-1,0), f_prime(ntime+1,ng-1);	///< F values on the logit scale
 	Matrix<mydouble> F(ntime,ng), F_prime(ntime,ng);	///< Probability of source
 
 	/* Output to file */
@@ -575,6 +670,12 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 					for (int t = 0; t < ntime; t++) {
 						for(i=0;i<ng;i++) {
 							o3 << tab << F[t][i].todouble();
+						}
+					}
+					// f
+					for (int t = 0; t < ntime+1; t++) {
+						for(i=0;i<ng-1;i++) {
+							o3 << tab << f[t][i];
 						}
 					}
 					// ALPHA
