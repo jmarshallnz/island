@@ -500,10 +500,6 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 
 	int h = human.nrows();
 
-	/* Storage for likelihoods */
-	Vector< Matrix<mydouble> > LIKHI(2);
-	LIKHI[use] = Matrix<mydouble>(h,ng+1);		///< likelihood of each human isolate
-	LIKHI[notuse] = Matrix<mydouble>(h,ng+1);	///< likelihood of each human isolate
 	mydouble likelihood = known_source_lik6_composite(A[use],b[use],R[use]);
 
 	/* Proposal probabilities */
@@ -561,7 +557,8 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			calc_logit_F(f,F);
 
 			/* Compute likelihood */
-			mydouble flik = calc_lik6(LIKHI[use],A[use],a[use],b[use],R[use],F);
+			Matrix<mydouble> LIKHI(h,ng+1);		///< likelihood of each human isolate
+			mydouble flik = calc_lik6(LIKHI,A[use],a[use],b[use],R[use],F);
 
 			/* Side chain */
 			for(fiter=0;fiter<fniter;fiter++) {
@@ -569,7 +566,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 				update_priors(ALPHA, f, ran);
 
 				/* MH step(s) for updating F */
-				update_f(f, F, LIKHI[use], ALPHA, ran);
+				update_f(f, F, LIKHI, ALPHA, ran);
 
 				/* Output */
 				if(fiter%100==0) {
@@ -592,7 +589,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 						for(i=0;i<h;i++) {
 							const int t = htime[i];
 							for(j=0;j<ng;j++) {
-								GLIK[i][j] += F[t][j] * LIKHI[use][i][j] / LIKHI[use][i][ng];
+								GLIK[i][j] += F[t][j] * LIKHI[i][j] / LIKHI[i][ng];
 							}
 						}
 					}
