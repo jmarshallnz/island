@@ -30,7 +30,7 @@ fd = fmcmc$iter>=1000
 ### VISUALISE DIRECTLY THE MCMC OUTPUT FOR PARAMETER F       ###
 ### (THE PROPORTION OF ISOLATES ATTRIBUTABLE TO EACH SOURCE) ###
 ################################################################
-pdf(file=paste(fname,".pdf",sep=""), width=11, height=8)
+pdf(file=paste(fnames,".pdf",sep=""), width=11, height=8)
 
 plot(fmcmc$f0[fd],type="l",ylim=c(0,1),col=2,ylab="Proportion")
 for(i in 2:ng) lines(fmcmc[fd,(1+i)],col=rainbow(ng)[i])
@@ -56,9 +56,11 @@ print(pe)
 ### PLOT 3                                                                    ###
 ### BARCHART OF THE ESTIMATED PROPORTION OF CASES ATTRIBUTABLE TO EACH SOURCE ###
 #################################################################################
-par(mfrow=c(1,1))
+
+pdf(file=paste(fnames,"prop.pdf",sep=""), width=11, height=8)
 mp = barplot(pe[1,],col=rainbow(ng),ylim=c(0,1),ylab="Proportion of human cases")
 segments(mp,pe[4,],mp,pe[5,],lwd=2)
+dev.off()
 
 #################################################
 ### PLOT 4                                    ###
