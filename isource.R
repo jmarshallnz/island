@@ -1,5 +1,6 @@
 sc <- c("Poultry","Cattle","Sheep", "Water/Environment", "Ruminants")
 o <- c(1,2,3,4)
+library(RColorBrewer)
 col = brewer.pal(8, "Set1")[c(5,1,2,3,4,7,8)]
 
 ng = 4  # TODO: Automate this
@@ -144,7 +145,7 @@ if (1) {
 	for(i in 0:(ymax/10))
 		mtext(i*10,2,line=1,at=i*10)
 
-	legend("bottomleft", labels=sc[o], col=col[o])
+	legend("bottomleft", legend=sc[o], col=col[o])
 }
 
 # totals
@@ -175,7 +176,7 @@ if (1) {
 	for(i in 0:(ymax/10))
 		mtext(i*10,2,line=1,at=i*10)
 
-	legend("topright", labels=sc[o], col=col[o])
+	legend("topright", legend=sc[o], col=col[o])
 }
 
 # totals per source
