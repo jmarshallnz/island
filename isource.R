@@ -1,4 +1,4 @@
-sc <- c("CHICKEN","CATTLE","SHEEP", "WATER/ENVIRONMENT")
+sc <- c("CHICKEN","CATTLE", "SHEEP", "WATER", "OTHER")
 ng = length(sc)
 
 #########################
@@ -7,7 +7,7 @@ ng = length(sc)
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("out1")
+fnames = c("nigel5")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
@@ -30,7 +30,7 @@ fd = fmcmc$iter>=1000
 ### VISUALISE DIRECTLY THE MCMC OUTPUT FOR PARAMETER F       ###
 ### (THE PROPORTION OF ISOLATES ATTRIBUTABLE TO EACH SOURCE) ###
 ################################################################
-pdf(file=paste(fnames,".pdf",sep=""), width=11, height=8)
+#pdf(file=paste(fnames,".pdf",sep=""), width=11, height=8)
 
 plot(fmcmc$f0[fd],type="l",ylim=c(0,1),col=2,ylab="Proportion")
 for(i in 2:ng) lines(fmcmc[fd,(1+i)],col=rainbow(ng)[i])
@@ -57,7 +57,7 @@ print(pe)
 ### BARCHART OF THE ESTIMATED PROPORTION OF CASES ATTRIBUTABLE TO EACH SOURCE ###
 #################################################################################
 
-pdf(file=paste(fnames,"prop.pdf",sep=""), width=11, height=8)
+pdf(file=paste(fnames,".pdf",sep=""), width=11, height=8)
 mp = barplot(pe[1,],col=rainbow(ng),ylim=c(0,1),ylab="Proportion of human cases")
 segments(mp,pe[4,],mp,pe[5,],lwd=2)
 dev.off()
@@ -124,6 +124,7 @@ for(i in 0:(ng-1)) {
 ### PLOT 6                                           ###
 ### POSTERIOR PROBABILITY OF SOURCE FOR EACH ISOLATE ###
 ########################################################
+if (ng > 4) {
 cod = c(1,2,3,4)
 G = g[,cod]
 od = order(G[,1],G[,2],G[,3],G[,4])
@@ -147,6 +148,7 @@ image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probabili
 wm = apply(G,1,which.max)
 od = rev(order(wm!=4,wm!=5,G[,1],G[,2],G[,3],G[,4]))
 image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
+}
 
 ##########################################################
 ### TABLE 4                                            ###
