@@ -1,4 +1,16 @@
-sc <- c("CHICKEN","CATTLE", "SHEEP", "WATER", "OTHER")
+#sc <- c("Supplier A","Supplier B","Supplier C","Duck", "Turkey", "Spent Hen", "Cattle", "Sheep", "Dog/Cat", "Wild\nWater Bird", "Other\nWater Bird", "Water")  # 12
+sc <- c("Poultry","Cattle", "Sheep", "Water", "Turduckhen", "Other")  # 6
+#sc <- c("Poultry+TDH","Cattle", "Sheep", "Water", "Other")  # 5
+#sc <- c("Poultry+TDH","Cattle", "Sheep", "Water+Other")  # 4
+sc <- c("Poultry+TDH","Ruminants", "Water+Other")  # 3
+#sc <- c("Poultry","Ruminants", "Water")  # 3_noother
+#sc <- c("Poultry","Cattle", "Sheep", "Water")  # 4_noother
+#sc <- c("Poultry","Cattle", "Sheep", "Water", "Other")  # 5_no_tdh
+#sc <- c("Poultry","Cattle", "Sheep", "Water+Other")  # 4_no_tdh
+#sc <- c("Poultry","Ruminants", "Water+Other")  # 3_no_tdh
+#sc <- c("Poultry","Cattle", "Sheep", "Water", "Turduckhen")  # 5_tdh_noother
+sc <- c("Poultry+TDH","Ruminants", "Water")  # 3_tdh_no_other
+
 ng = length(sc)
 
 #########################
@@ -7,7 +19,7 @@ ng = length(sc)
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("nigel5")
+fnames = c("rerun_nigel_tdh3")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
@@ -162,5 +174,6 @@ image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probabili
 ##########################################################
 colnames(g) <- sc
 print(g)
+write.csv(g, paste(fnames,"_g.txt",sep=""), row.names=F)
 
 dev.off()
