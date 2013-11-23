@@ -421,7 +421,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 			double mu_post = (Alpha_mu[j]*Alpha_prec[j] + (T+1)*mu_h[0][j]*tau*(1-rho*rho)) / prec_post;
 			double mu_cand = ran.normal(mu_post, 1/sqrt(prec_post));
 			if (mu_cand < -10 || mu_cand > 10) {
-				cout << "WARNING: mu appears to be silly: mu=" << mu_cand << " mu_post=" << mu_post << endl;
+				cout << "WARNING: mu[" << j << "]=" << mu_cand << " mu_post=" << mu_post << " prec_post=" << prec_post << " rho=" << rho << " mu_h=" << mu_h[0][j] << endl;
 				mu_cand = ALPHA[i][2+j];
 			}
 			mu[0][j] = mu_cand;
@@ -453,6 +453,10 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		{
 			rho = rho_post + sigma_post*ran.Z();
 			rho_count++;
+			if (rho_count > 20) {
+				rho = ALPHA[i][0];
+				break;
+			}
 		}
 
 		double rss = rsyy - 2*rho*rsxy + rho*rho*rsxx;
@@ -564,7 +568,7 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 		updates++;
 	}
 	if (updates % 600000 == 0) {
-		cout << "A/R rate for F after " << accept_rate[0] + reject_rate[0] << " iterations is";
+		cout << "A/R rate for F after " << accept_rate[0] + reject_rate[0] << " iterations is" << endl;
 		for (int i = 0; i < ng-1; i++)
 			cout << " " << (double)accept_rate[i] / (accept_rate[i]+reject_rate[i]);
 		cout << endl;
