@@ -1,9 +1,9 @@
-sc <- c("Poultry","Cattle","Sheep", "Water/Environment", "Ruminants")
+sc <- c("Poultry","Cattle","Sheep", "Water-Environment", "Ruminants")
 o <- c(1,2,3,4)
-library(RColorBrewer)
-col = brewer.pal(8, "Set1")[c(5,1,2,3,4,7,8)]
+col = c("#FF7F00","#CF0000","#004FCF", "#009F9F","#8F006F","#9F5F3F","#FFAFAF")
+#col = brewer.pal(8, "Set1")[c(5,1,2,3,4,7,8)]
 
-ng = 4  # TODO: Automate this
+ng = length(o)  # TODO: Automate this
 nt = 32 # TODO: Automate this
 
 #########################
@@ -63,6 +63,32 @@ for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+0],col=i+1)
 plot(fmcmc[fd,off+4],type="l",ylim=range(fmcmc[fd,off+3*1:(ng-1)+1]),col=2,ylab="Value",main="tau")
 for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+1],col=i+1)
 
+if (1) {
+	pdf("mean_correlation.pdf", width=8, height=5)
+	par(mfrow=c(1,2))
+	l <- list()
+	xlim <- NULL
+	ylim <- NULL
+	for (i in 1:(ng-1)) {
+		l[[i]] <- density(fmcmc[fd,off+3*i+1])
+		xlim <- range(xlim, l[[i]]$x);
+		ylim <- range(ylim, l[[i]]$y);
+	}
+	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="mu")
+	for(i in 2:(ng-1)) lines(l[[i]],lwd=2,col=o[i])
+
+	xlim <- NULL
+	ylim <- NULL
+	for (i in 1:(ng-1)) {
+		l[[i]] <- density(fmcmc[fd,off+3*i-1])
+		xlim <- range(xlim, l[[i]]$x);
+		ylim <- range(ylim, l[[i]]$y);
+	}
+	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="mu")
+	for(i in 2:(ng-1)) lines(l[[i]],col=o[i],lwd=2)
+	dev.off()
+}
+
 plot(density(fmcmc[fd,off+2]), xlim=range(fmcmc[fd,off+3*1:(ng-1)-1]), col=2,main="mu")
 for(i in 2:(ng-1)) lines(density(fmcmc[fd,off+3*i-1]),col=i+1)
 plot(density(fmcmc[fd,off+3]), xlim=range(fmcmc[fd,off+3*1:(ng-1)+0]), col=2,main="rho")
@@ -114,10 +140,10 @@ if (0) {
 ### PLOT 3                                                                    ###
 ### BARCHART OF THE ESTIMATED PROPORTION OF CASES ATTRIBUTABLE TO EACH SOURCE ###
 #################################################################################
-par(mfrow=c(1,1))
 
 # proportions
 if (1) {
+	pdf("proportions.pdf", width=8, height=5)
 	x = c(0,seq(1.5,nt-1.5),nt,nt,seq(nt-1.5,1.5),0)
 	g <- matrix(0,nt,ng)
 	for (t in 1:nt) {
@@ -142,14 +168,16 @@ if (1) {
 
 	for (i in 1:8)
 	   	mtext(2004+i, 1, line=0.5, at=4*i-2)
-	for(i in 0:(ymax/10))
-		mtext(i*10,2,line=1,at=i*10)
+	for(i in 0:5)
+		mtext(i/5,2,line=1,at=i/5)
 
-	legend("bottomleft", legend=sc[o], col=col[o])
+	legend("bottomleft", legend=sc[o], fill=col[o])
+	dev.off()
 }
 
 # totals
 if (1) {
+	pdf("totals.pdf", width=8, height=5)
 	x = c(0,seq(1.5,nt-1.5),nt,nt,seq(nt-1.5,1.5),0)
 	g <- matrix(0,nt,ng)
 	for (t in 1:nt) {
@@ -173,15 +201,17 @@ if (1) {
 
 	for (i in 1:8)
 	   	mtext(2004+i, 1, line=0.5, at=4*i-2)
-	for(i in 0:(ymax/10))
-		mtext(i*10,2,line=1,at=i*10)
+	for(i in 0:(ymax/20))
+		mtext(i*20,2,line=1,at=i*20)
 
-	legend("topright", legend=sc[o], col=col[o])
+	legend("topright", legend=sc[o], fill=col[o])
+	dev.off()
 }
 
 # totals per source
 for (j in 1:ng)
 {
+	pdf(paste("totals_",sc[o[j]],".pdf",sep=""), width=8, height=5)
 	x = c(0,seq(1.5,nt-1.5),nt)
 
 	pee <- matrix(0,nt,3)
@@ -193,17 +223,50 @@ for (j in 1:ng)
 
 	ymax <- 80
 
-	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i", main=sprintf("Cases attributed to %s", sc[o[j]]))
+	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i", main="")
 	y = c(pee[,2],rev(pee[,3]))
 	polygon(c(x,rev(x)),y,col="grey80", border="grey80")
 	lines(x, pee[,1], col="black", lwd="2")
 
 	for (i in 1:8)
 		mtext(2004+i, 1, line=0.5, at=4*i-2)
+	for(i in 0:(ymax/20))
+		mtext(i*20,2,line=1,at=i*20)
+	text(2,ymax-2,sc[o[j]], adj=c(0,0))
+	box()
+	dev.off()
+}
+# ruminants...
+if (0) {
+
+	x = c(0,seq(1.5,nt-1.5),nt)
+
+	for (j in 2:3) {
+
+	pdf(paste("ruminant_cis_",sc[o[j]],".pdf",sep=""), width=8, height=3)
+	ymax <- 30
+
+	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i", main="")
+
+	pee <- matrix(0,nt,3)
+	for (t in 1:nt) {
+		df = fmcmc[fd,((t-1)*ng+2):(t*ng+1)]*human_counts[t]; names(df) <- sc[o];
+		pe = apply(df,2,function(x)c("mean"=mean(x),quantile(x,c(.025,.975))))
+		pee[t,] <- pe[,j]
+  	}
+
+	y = c(pee[,2],rev(pee[,3]))
+	polygon(c(x,rev(x)),y,col="grey80", border="grey80")
+	y <- pee[,1]
+	lines(x, y, col="black", lwd="2")
+	for (i in 1:8)
+		mtext(2004+i, 1, line=0.5, at=4*i-2)
 	for(i in 0:(ymax/10))
 		mtext(i*10,2,line=1,at=i*10)
-
-box()
+	text(2,ymax-3,sc[o[j]])
+	box()
+	dev.off()
+	}
 }
 
 
@@ -244,12 +307,16 @@ for(i in 0:(ng-1)) {
 ### PLOT 5                                    ###
 ### PIE CHARTS OF THE EVOLUTIONARY PARAMETERS ###
 #################################################
-par(mfrow=c(2,2))
-COL = col[c(o,6)];
-for(i in 0:(ng-1)) {
-  wh0 = which(names(mcmc)==paste("A",i,0,"",sep="."))
-  whng = which(names(mcmc)==paste("A",i,ng,"",sep="."))
-  pie(apply(mcmc[gd,wh0:whng],2,mean),col=COL,labels="",main=sc[o[i+1]],radius=1.)
+if (1) {
+	COL = paste(col[c(o,6)],"7F",sep="");
+	for(i in 0:(ng-1)) {
+	pdf(paste("migration_mutation",i+1,".pdf",sep=""), width=3, height=3)
+	par(omi=rep(0,4))
+	  wh0 = which(names(mcmc)==paste("A",i,0,"",sep="."))
+	  whng = which(names(mcmc)==paste("A",i,ng,"",sep="."))
+	  pie(apply(mcmc[gd,wh0:whng],2,mean),col=COL,labels="",radius=1.05)
+	dev.off()
+	}
 }
 
 dev.off()
