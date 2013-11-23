@@ -350,7 +350,7 @@ void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 {
 	/* Priors */
 	const double Alpha_mu = 0, Alpha_prec = 0.01;	///< Means
-	const double Beta_mu = 0, Beta_prec = 0.1;    	///< Auto-correlation
+	const double Beta_mu = 0, Beta_prec = 10;    	///< Auto-correlation
 	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
 	for(int j = 0; j < ALPHA.nrows(); j++) {
@@ -377,7 +377,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	const Vector<double> Alpha_mu(ALPHA.ncols()-2,0);		///< Means
 	const Vector<double> Alpha_prec(ALPHA.ncols()-2,0.1);
 	const double Beta_mu = 0, Beta_prec = 1;       ///< Auto-correlation
-	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
+	const double Tau_shape = 1, Tau_rate = 5;	///< Precision
 
 	const int T = f.ncols()-1;
 	for (int i = 0; i < ALPHA.nrows(); i++) {
