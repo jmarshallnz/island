@@ -426,7 +426,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		double sigma_post = sqrt(sigma_hat / (Beta_prec + rsxx));
 		rho = rho_post + sigma_post*ran.Z();
 		int rho_count = 0;
-		while (fabs(rho) >= 0.999)	///< ensure a truncated normal distribution
+		while (fabs(rho) >= 0.95)	///< ensure a truncated normal distribution
 		{
 			rho = rho_post + sigma_post*ran.Z();
 			rho_count++;
