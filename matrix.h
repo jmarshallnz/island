@@ -198,6 +198,17 @@ public:
 				result[i][j] = f(element[i][j]);
 		return result;
 	}
+	/* Compute hat matrix xx' */
+	Matrix<T>& hat(const Matrix<T> &x) {
+		resize(x.nrows(), x.nrows());
+		for (int i = 0; i < protected_nrows; i++)
+			for (int j = 0; j < protected_ncols; j++) {
+				element[i][j] = 0.0;
+				for (int k = 0; k < x.ncols(); k++)
+					element[i][j] += x.element[i][k] * x.element[j][k];
+			}
+		return *this;
+	}
 
 	/* Numerical Recipes in C++ routine for inverting a square real matrix */
 	Matrix<T> invert() {
