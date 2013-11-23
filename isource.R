@@ -12,7 +12,7 @@ nt = 32 # TODO: Automate this
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("out2")
+fnames = c("out1")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
