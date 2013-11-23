@@ -338,7 +338,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 		}
 	}
 	for (int i = 0; i < ng-1; i++) {
-		for (int j = 0; j < 2+2; j++) {
+		for (int j = 0; j < 2+X.nrows(); j++) {
 			o3 << tab << "ALPHA" << i << "_" << j;
 		}
 	}
@@ -387,18 +387,14 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		/* Step 1: Regress f[t]-rho*f[t-1] ~ (X[t]-rho*X[t-1]) * mu
 		           using Prais Wintsen estimation for mu */
 		Matrix<double> y(T+1,1);
-		Matrix<double> X(2,T+1,1);
-		for (int t = 0; t <= 12; t++) {
-			X[1][t] = 0;
-		}
 		Matrix<double> x(X.nrows(),X.ncols());
 		y[0][0] = sqrt(1 - rho*rho)*f[i][0];
-		x[0][0] = sqrt(1 - rho*rho)*X[0][0];
-		x[1][0] = sqrt(1 - rho*rho)*X[1][0];
+		for (int j = 0; j < X.nrows(); j++)
+			x[j][0] = sqrt(1 - rho*rho)*X[j][0];
 		for (int t = 1; t <= T; t++) {
 			y[t][0] = f[i][t] - rho*f[i][t-1];
-			x[0][t] = X[0][t] - rho*X[0][t-1];
-			x[1][t] = X[1][t] - rho*X[1][t-1];
+			for (int j = 0; j < X.nrows(); j++)
+				x[j][t] = X[j][t] - rho*X[j][t-1];
 		}
 		// solution is (x'x)^-1 x'y
 		Matrix<double> xhat(X.nrows(),X.nrows());
@@ -487,10 +483,6 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 
 	/* compute fitted values */
 	Matrix<double> mu(f.nrows(),f.ncols());
-	Matrix<double> X(2,f.ncols(),1);
-	for (int t = 0; t <= 12; t++) {
-		X[1][t] = 0;
-	}
 	for (int loop = 0; loop < f.nrows(); loop++) {
 		Matrix<double> alpha(1,X.nrows());
 		for (int i = 0; i < X.nrows(); i++) {
@@ -653,7 +645,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
 
 	/* Source probabilities */
-	Matrix<double> ALPHA(ng-1, 2+2, 0);			///< Mean/Precision of assignment proportion (logit scale)
+	Matrix<double> ALPHA(ng-1, 2+X.nrows(), 0);			///< Mean/Precision of assignment proportion (logit scale)
 	Matrix<double> f(ng-1,ntime+1,0), f_prime(ng-1,ntime+1);	///< F values on the logit scale
 	Matrix<mydouble> F(ntime,ng), F_prime(ntime,ng);	///< Probability of source
 

@@ -86,12 +86,13 @@ double Cluster::FST(double &HS, double &HT) {
 	return 1. - HS/HT;
 }
 
-void Cluster::open_all(const char* filesource, const char *filehuman) {
+void Cluster::open_all(const char* filesource, const char *filehuman, const char *filedesign) {
 	init = true;
 	// Read in the raw data file
-	tsv TSVsource, TSVhuman;
+	tsv TSVsource, TSVhuman, TSVdesign;
 	TSVsource.read(filesource);
 	TSVhuman.read(filehuman);
+	TSVdesign.read(filedesign);
 
 	// Count the number of groups and loci
 	nloc = TSVsource.data.ncols()-2;
@@ -234,6 +235,15 @@ void Cluster::open_all(const char* filesource, const char *filehuman) {
 	if (ntime != TSVhuman.n_values()[nloc+1])
 		error("Human times should be sequential");
 	cout << "Found " << ntime << "times" << endl;
+	if (ntime+1 != TSVdesign.data.nrows())
+		error("Design matrix should have the same rows as there are times");
+	X.resize(TSVdesign.data.ncols(), TSVdesign.data.nrows());
+	cout << "Design matrix has " << X.nrows() << " columns" << endl;
+	for (int i = 0; i < X.nrows(); i++) {
+		for (int t = 0; t < X.ncols(); t++) {
+			X[i][t] = atof(TSVdesign.data[t][i].c_str());
+		}
+	}
 	if(ih!=nhuman) error("Book-keeping problem identifying target isolates");
 //////////////////////////////////////////////////////////////////////////////////////////////
 	// Count the number of non-human isolates in each group

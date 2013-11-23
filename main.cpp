@@ -82,15 +82,16 @@ void gibbs_ar1(Vector<double> &y, double &b, double &s2, Random &ran)
 }
 
 int main(const int argc, const char* argv[]) {
-	if(argc < 4) error("SYNTAX: animals_file humans_file out_file [niter thinning alpha seed]");
+	if(argc < 4) error("SYNTAX: animals_file humans_file design_file out_file [niter thinning alpha seed]");
 	const char* animals_file = argv[1];
 	const char* humans_file = argv[2];
-	const char* out_file = argv[3];
-	const int niter = argc > 4 ? atoi(argv[4]) : 1000;
-	const int thinning = argc > 5 ? atoi(argv[5]) : 10;
-	const double alpha = argc > 6 ? atof(argv[6]) : 1.0;
+	const char* design_file = argv[3];
+	const char* out_file = argv[4];
+	const int niter = argc > 5 ? atoi(argv[5]) : 1000;
+	const int thinning = argc > 6 ? atoi(argv[6]) : 10;
+	const double alpha = argc > 7 ? atof(argv[7]) : 1.0;
 	Random ran;
-	ran.setseed(argc > 7 ? atoi(argv[7]) : -3);
+	ran.setseed(argc > 8 ? atoi(argv[8]) : -3);
 
 	cout << argc << " arguments provided" << endl;
 	cout << "Iterations set to " << niter << endl;
@@ -120,7 +121,7 @@ int main(const int argc, const char* argv[]) {
 	*/
 
 	Cluster clust;
-	clust.open_all(animals_file, humans_file);
+	clust.open_all(animals_file, humans_file, design_file);
 	double HS = 0., HT = 0.;
 	cout << "FST = " << clust.FST(HS,HT);
 	cout << "\tHS = " << HS << "\tHT = " << HT << endl;

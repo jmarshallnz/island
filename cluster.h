@@ -58,6 +58,7 @@ public:
 	Vector<int> identicals;
 	Matrix<int> simMLST;
 
+	Matrix<double> X;	///< design matrix, stored as transpose
 public:
 	Cluster() {
 		init = false;
@@ -67,7 +68,7 @@ public:
 	}
 	void open(const char* filename);
 	void open_human(const char* filename);
-	void open_all(const char* filesources, const char *filehuman);
+	void open_all(const char* filesources, const char *filehuman, const char* filedesign);
 	void mcmc(const double th0, const double rh0, const double rhs0, const double alpha, Random &ran, const int niter, const int thin, const char* filename);
 	void mcmc(const double th0, const double rh0, const double rhs0, const double alpha, Random &ran, const int niter, const int thin, ofstream& out);
 	void mcmc2(const double th0, const double rh0, const double rhs0, const double alpha, Random &ran, const int niter, const int thin, const char* filename);
