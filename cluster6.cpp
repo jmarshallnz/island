@@ -354,9 +354,9 @@ void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
 	for(int j = 0; j < ALPHA.nrows(); j++) {
-		ALPHA[j][0] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
-		ALPHA[j][1] = Beta_mu;			//ran.normal(Beta_mu, 1/sqrt(Beta_prec));
-		ALPHA[j][2] = Tau_shape/Tau_rate;	//ran.gamma(1/Tau_rate, Tau_shape);
+		ALPHA[j][0] = Beta_mu;			//ran.normal(Beta_mu, 1/sqrt(Beta_prec));
+		ALPHA[j][1] = Tau_shape/Tau_rate;	//ran.gamma(1/Tau_rate, Tau_shape);
+		ALPHA[j][2] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
 	}
 }
 
@@ -365,7 +365,7 @@ void Cluster::init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran
 	/* f[t][i] ~ Normal(ALPHA[j], TAU[j]) */
 	for (int j = 0; j < f.nrows(); j++) {
 		for (int t = 0; t < f.ncols(); t++) {
-			f[j][t] = 0; //ran.normal(ALPHA[j][0], 1/sqrt(ALPHA[j][0]));
+			f[j][t] = 0; //ran.normal(ALPHA[j][2], 1/sqrt(ALPHA[j][2]));
 		}
 	}
 }
@@ -380,9 +380,9 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	const int T = f.ncols()-1;
 	double rss = 0; // for tau update
 	for (int i = 0; i < ALPHA.nrows(); i++) {
-		double mu  = ALPHA[i][0];	///< Mean (TODO: Add other factors)
-		double rho = ALPHA[i][1];	///< Auto-correlation
-		double tau = ALPHA[i][2];	///< Precision
+		double rho = ALPHA[i][0];	///< Auto-correlation
+		double tau = ALPHA[i][1];	///< Precision
+		double mu  = ALPHA[i][2];	///< Mean (TODO: Add other factors)
 
 		// Step 1: Regress f[t]-rho*f[t-1] ~ (X[t]-rho*X[t-1]) * theta
 		double y = sqrt(1 - rho*rho);
@@ -433,8 +433,8 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		}
 
 		rss += rsyy - 2*rho*rsxy + rho*rho*rsxx;
-		ALPHA[i][0] = mu;
-		ALPHA[i][1] = rho;
+		ALPHA[i][0] = rho;
+		ALPHA[i][2] = mu;
 	}
 	// Step 5: Update tau from IG(v0 + n/2, vs + rss/2)
 	double shape = Tau_shape + T*ALPHA.nrows()/2;
@@ -442,7 +442,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	double tau = ran.gamma(1/rate, shape);
 	tau = 0.1; // TEST
 	for (int i=0; i < ALPHA.nrows(); i++) {
-		ALPHA[i][2] = tau;
+		ALPHA[i][1] = tau;
 	}
 }
 
@@ -462,9 +462,9 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 	/* update f[0] f ~ Normal(mu+rho*(f[1]-mu), tau) */
 	for (int loop = 0; loop < f.nrows(); loop++) {
 		int id = ran.discrete(0, f.nrows()-1);
-		const double mu = ALPHA[id][0];
-		const double rho = ALPHA[id][1];
-		const double tau = ALPHA[id][2];
+		const double rho = ALPHA[id][0];
+		const double tau = ALPHA[id][1];
+		const double mu = ALPHA[id][2];
 		double e0 = rho*(f[id][1]-mu) + ran.Z() / sqrt(tau);
 		f[id][0] = mu + e0;
 	}
@@ -494,13 +494,13 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 		// or
 		//   f[t] ~ Normal(mu + rho*(f[t-1] - mu), tau)
 		const double *alpha = ALPHA[id];
-		double mu = alpha[0]*(1-alpha[1]);
-		double tau = alpha[2];
+		double mu = alpha[2]*(1-alpha[0]);
+		double tau = alpha[1];
 		if (t < ntime-1) {
-			mu += alpha[1]*(f[id][t-1] + f[id][t+1])/2;
-			tau += alpha[2];
+			mu += alpha[0]*(f[id][t-1] + f[id][t+1])/2;
+			tau += alpha[1];
 		} else {
-			mu += alpha[1]*f[id][t-1];
+			mu += alpha[0]*f[id][t-1];
 		}
 		double logalpha = ((f[id][t]-mu)*(f[id][t]-mu) - (f_prime-mu)*(f_prime-mu))*tau/2;
 
