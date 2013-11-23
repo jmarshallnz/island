@@ -65,26 +65,46 @@ for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+1],col=i+1)
 
 if (1) {
 	pdf("mean_correlation.pdf", width=8, height=5)
-	par(mfrow=c(1,2))
+	par(mfrow=c(2,2))
 	l <- list()
 	xlim <- NULL
 	ylim <- NULL
 	for (i in 1:(ng-1)) {
-		l[[i]] <- density(fmcmc[fd,off+3*i+1])
+		l[[i]] <- density(fmcmc[fd,off+4*i+0])
 		xlim <- range(xlim, l[[i]]$x);
 		ylim <- range(ylim, l[[i]]$y);
 	}
-	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="mu")
+	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="mu[1]")
 	for(i in 2:(ng-1)) lines(l[[i]],lwd=2,col=o[i])
 
 	xlim <- NULL
 	ylim <- NULL
 	for (i in 1:(ng-1)) {
-		l[[i]] <- density(fmcmc[fd,off+3*i-1])
+		l[[i]] <- density(fmcmc[fd,off+4*i+1])
 		xlim <- range(xlim, l[[i]]$x);
 		ylim <- range(ylim, l[[i]]$y);
 	}
-	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="mu")
+	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="mu[2]")
+	for(i in 2:(ng-1)) lines(l[[i]],col=o[i],lwd=2)
+
+	xlim <- NULL
+	ylim <- NULL
+	for (i in 1:(ng-1)) {
+		l[[i]] <- density(fmcmc[fd,off+4*i-2])
+		xlim <- range(xlim, l[[i]]$x);
+		ylim <- range(ylim, l[[i]]$y);
+	}
+	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="rho")
+	for(i in 2:(ng-1)) lines(l[[i]],col=o[i],lwd=2)
+
+	xlim <- NULL
+	ylim <- NULL
+	for (i in 1:(ng-1)) {
+		l[[i]] <- density(fmcmc[fd,off+4*i-1])
+		xlim <- range(xlim, l[[i]]$x);
+		ylim <- range(ylim, l[[i]]$y);
+	}
+	plot(l[[1]], xlim=xlim, ylim=ylim, col=o[1],lwd=2,main="tau")
 	for(i in 2:(ng-1)) lines(l[[i]],col=o[i],lwd=2)
 	dev.off()
 }
