@@ -28,7 +28,7 @@ for(i in 1:length(fnames)) {
 g = t(g)/length(fnames)
 ### SET THE BURN-IN
 gd = mcmc$iter>=5000
-fd = fmcmc$iter>=10000
+fd = fmcmc$iter>=1000 #10000
 
 # read in our humans and count times...
 humans <- read.table("humans.txt", header=T)

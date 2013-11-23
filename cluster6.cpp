@@ -670,8 +670,8 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 
 	mydouble newlik, logalpha;
 	int iter, fiter, move, ctr = 0;
-	const int fniter = 20000;
-	const int fburnin = 10000;
+	const int fniter = 2000; // 20000;
+	const int fburnin = 1000; // 10000;
 	const int inc = MAX((int)floor((double)niter*.9/100.),1);
 	const int burnin = (int)floor((double)niter*.1);
 	for(iter=0;iter<niter;iter++) {
