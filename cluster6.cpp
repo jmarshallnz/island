@@ -380,7 +380,6 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
 	const int T = f.ncols()-1;
-	double rss = 0; // for tau update
 	for (int i = 0; i < ALPHA.nrows(); i++) {
 		double rho = ALPHA[i][0];	///< Auto-correlation
 		double tau = ALPHA[i][1];	///< Precision
@@ -443,17 +442,15 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 			rho_count++;
 		}
 
-		rss += rsyy - 2*rho*rsxy + rho*rho*rsxx;
+		double rss = rsyy - 2*rho*rsxy + rho*rho*rsxx;
 		ALPHA[i][0] = rho;
 		for (int j = 0; j < mu.ncols(); j++)
 			ALPHA[i][2+j] = mu[0][j];
-	}
-	// Step 5: Update tau from IG(v0 + n/2, vs + rss/2)
-	double shape = Tau_shape + T*ALPHA.nrows()/2;
-	double rate = Tau_rate + rss/2;
-	double tau = ran.gamma(1/rate, shape);
-	tau = 0.1; // TEST
-	for (int i=0; i < ALPHA.nrows(); i++) {
+
+		// Step 5: Update tau from IG(v0 + n/2, vs + rss/2)
+		double shape = Tau_shape + (T+1)*ALPHA.nrows()/2;
+		double rate = Tau_rate + rss/2;
+		tau = ran.gamma(1/rate, shape);
 		ALPHA[i][1] = tau;
 	}
 }
