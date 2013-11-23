@@ -356,7 +356,8 @@ void Cluster::init_priors(Matrix<double> &ALPHA, Random &ran)
 	for(int j = 0; j < ALPHA.nrows(); j++) {
 		ALPHA[j][0] = Beta_mu;			//ran.normal(Beta_mu, 1/sqrt(Beta_prec));
 		ALPHA[j][1] = Tau_shape/Tau_rate;	//ran.gamma(1/Tau_rate, Tau_shape);
-		ALPHA[j][2] = Alpha_mu; 		//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
+		for (int k = 2; k < ALPHA.ncols(); k++)
+			ALPHA[j][k] = Alpha_mu; 	//ran.normal(Alpha_mu, 1/sqrt(Alpha_prec));
 	}
 }
 
@@ -373,8 +374,8 @@ void Cluster::init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran
 void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran)
 {
 	/* Priors */
-	const Vector<double> Alpha_mu(1,0);		///< Means
-	const Vector<double> Alpha_prec(1,0.1);
+	const Vector<double> Alpha_mu(ALPHA.ncols()-2,0);		///< Means
+	const Vector<double> Alpha_prec(ALPHA.ncols()-2,0.1);
 	const double Beta_mu = 0, Beta_prec = 1;       ///< Auto-correlation
 	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
@@ -387,15 +388,16 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		/* Step 1: Regress f[t]-rho*f[t-1] ~ (X[t]-rho*X[t-1]) * mu
 		           using Prais Wintsen estimation for mu */
 		Matrix<double> y(T+1,1);
+		Matrix<double> X(1,T+1,1);
 		Matrix<double> x(1,T+1);
 		y[0][0] = sqrt(1 - rho*rho)*f[i][0];
-		x[0][0] = sqrt(1 - rho*rho);
+		x[0][0] = sqrt(1 - rho*rho)*X[0][0];
 		for (int t = 1; t <= T; t++) {
 			y[t][0] = f[i][t] - rho*f[i][t-1];
-			x[0][t] = 1 - rho;
+			x[0][t] = X[0][t] - rho*X[0][t-1];
 		}
 		// solution is (x'x)^-1 x'y
-		Matrix<double> xhat(1,1);
+		Matrix<double> xhat(X.nrows(),X.nrows());
 		Matrix<double> xhat_inv(xhat.hat(x).invert());
 		Matrix<double> mu_h(xhat_inv * x * y);
 
@@ -414,7 +416,6 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 		}
 
 		// Step 3: Compute new residuals (needs to use the original x...)
-		Matrix<double> X(1,T+1,1);
 		Matrix<double> x_mu(mu * X);
 
 		double e, e0 = f[i][0] - x_mu[0][0];
@@ -470,14 +471,26 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 	Vector<mydouble> F_prime(ng);
 	Vector<mydouble> likelihood_prime(likelihood.nrows());
 
+	/* compute fitted values */
+	Matrix<double> mu(f.nrows(),f.ncols());
+	Matrix<double> X(1,f.ncols(),1);
+	for (int loop = 0; loop < f.nrows(); loop++) {
+		Matrix<double> alpha(1,X.nrows());
+		for (int i = 0; i < X.nrows(); i++) {
+			alpha[0][i] = ALPHA[loop][2+i];
+		}
+		Matrix<double> mu_x(alpha * X);
+		for (int i = 0; i < f.ncols(); i++) {
+			mu[loop][i] = mu_x[0][i];
+		}
+	}
 	/* update f[0] f ~ Normal(mu+rho*(f[1]-mu), tau) */
 	for (int loop = 0; loop < f.nrows(); loop++) {
 		int id = ran.discrete(0, f.nrows()-1);
 		const double rho = ALPHA[id][0];
 		const double tau = ALPHA[id][1];
-		const double mu = ALPHA[id][2];
-		double e0 = rho*(f[id][1]-mu) + ran.Z() / sqrt(tau);
-		f[id][0] = mu + e0;
+		double e0 = rho*(f[id][1]-mu[id][1]) + ran.Z() / sqrt(tau);
+		f[id][0] = mu[id][0] + e0;
 	}
 	/* update each f value in turn RANDOMLY */
 	for (int loop = 0; loop < (f.ncols()-1) * f.nrows(); loop++) {
@@ -505,15 +518,16 @@ void Cluster::update_f(Matrix<double> &f, Matrix<mydouble> &F, Matrix<mydouble> 
 		// or
 		//   f[t] ~ Normal(mu + rho*(f[t-1] - mu), tau)
 		const double *alpha = ALPHA[id];
-		double mu = alpha[2]*(1-alpha[0]);
 		double tau = alpha[1];
+		double m;
 		if (t < ntime-1) {
-			mu += alpha[0]*(f[id][t-1] + f[id][t+1])/2;
+			m = mu[id][t] + 0.5*alpha[0]*(f[id][t-1] - mu[id][t-1]);
+			m += 0.5*alpha[0]*(f[id][t+1] - mu[id][t+1]);
 			tau += alpha[1];
 		} else {
-			mu += alpha[0]*f[id][t-1];
+			m = mu[id][t] + alpha[0]*(f[id][t-1] - mu[id][t-1]);
 		}
-		double logalpha = ((f[id][t]-mu)*(f[id][t]-mu) - (f_prime-mu)*(f_prime-mu))*tau/2;
+		double logalpha = ((f[id][t]-m)*(f[id][t]-m) - (f_prime-m)*(f_prime-m))*tau/2;
 
 		// OPTIMISATION: All we need is the _change_ in likelihood due to F -> F_prime.
 		// The only change will be due to humans that have this time period, so that's one (huge) optimisation.
