@@ -416,7 +416,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 			double prec_post = Alpha_prec[j] + (T+1)*tau*(1-rho*rho);
 			double mu_post = (Alpha_mu[j]*Alpha_prec[j] + (T+1)*mu_h[0][j]*tau*(1-rho*rho)) / prec_post;
 			double mu_cand = ran.normal(mu_post, 1/sqrt(prec_post));
-			if (mu_cand < -10 || mu_cand > 10) {
+			if (mu_cand < -30 || mu_cand > 30) {
 				cout << "WARNING: mu[" << j << "]=" << mu_cand << " mu_post=" << mu_post << " prec_post=" << prec_post << " rho=" << rho << " mu_h=" << mu_h[0][j] << endl;
 				mu_cand = ALPHA[i][2+j];
 			}
