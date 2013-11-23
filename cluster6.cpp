@@ -373,7 +373,8 @@ void Cluster::init_f(Matrix<double> &f, const Matrix<double> &ALPHA, Random &ran
 void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Random &ran)
 {
 	/* Priors */
-	const double Alpha_mu = 0, Alpha_prec = 0.1;	///< Means
+	const Vector<double> Alpha_mu(1,0);		///< Means
+	const Vector<double> Alpha_prec(1,0.1);
 	const double Beta_mu = 0, Beta_prec = 1;       ///< Auto-correlation
 	const double Tau_shape = 0.1, Tau_rate = 0.1;	///< Precision
 
@@ -382,36 +383,45 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	for (int i = 0; i < ALPHA.nrows(); i++) {
 		double rho = ALPHA[i][0];	///< Auto-correlation
 		double tau = ALPHA[i][1];	///< Precision
-		double mu  = ALPHA[i][2];	///< Mean (TODO: Add other factors)
 
-		// Step 1: Regress f[t]-rho*f[t-1] ~ (X[t]-rho*X[t-1]) * theta
-		double y = sqrt(1 - rho*rho);
-		double sy = y;
-		double syy = y*y;
+		/* Step 1: Regress f[t]-rho*f[t-1] ~ (X[t]-rho*X[t-1]) * mu
+		           using Prais Wintsen estimation for mu */
+		Matrix<double> y(T+1,1);
+		Matrix<double> x(1,T+1);
+		y[0][0] = sqrt(1 - rho*rho)*f[i][0];
+		x[0][0] = sqrt(1 - rho*rho);
 		for (int t = 1; t <= T; t++) {
-			y = f[i][t] - rho*f[i][t-1];
-			// x = ...
-			sy += y;
-			syy += y*y;
+			y[t][0] = f[i][t] - rho*f[i][t-1];
+			x[0][t] = 1 - rho;
 		}
-		double mu_hat = sy/ntime/(1-rho);
+		// solution is (x'x)^-1 x'y
+		Matrix<double> xhat(1,1);
+		Matrix<double> xhat_inv(xhat.hat(x).invert());
+		Matrix<double> mu_h(xhat_inv * x * y);
 
 		// Step 2: Update theta
-		double prec_post = Alpha_prec + ntime*tau*(1-rho*rho);
-		double mu_post = (Alpha_mu*Alpha_prec + mu_hat*tau) / prec_post;
-		double mu_cand = ran.normal(mu_post, 1/sqrt(prec_post));
-		if (mu_cand < -10 || mu_cand > 10) {
-			cout << "WARNING: mu appears to be silly: mu=" << mu_cand << " mu_post=" << mu_post << endl;
-			mu_cand = mu;
+		Matrix<double> mu(1, mu_h.nrows()); // mu is the transpose
+		for (int j = 0; j < mu_h.nrows(); j++)
+		{
+			double prec_post = Alpha_prec[j] + (T+1)*tau*(1-rho*rho);
+			double mu_post = (Alpha_mu[j]*Alpha_prec[j] + mu_h[0][j]*tau) / prec_post;
+			double mu_cand = ran.normal(mu_post, 1/sqrt(prec_post));
+			if (mu_cand < -10 || mu_cand > 10) {
+				cout << "WARNING: mu appears to be silly: mu=" << mu_cand << " mu_post=" << mu_post << endl;
+				mu_cand = ALPHA[i][2+j];
+			}
+			mu[0][j] = mu_cand;
 		}
-		mu = mu_cand;
 
-		// Step 3: Compute new residuals
-		double e, e0 = f[i][0] - mu_hat;
+		// Step 3: Compute new residuals (needs to use the original x...)
+		Matrix<double> X(1,T+1,1);
+		Matrix<double> x_mu(mu * X);
+
+		double e, e0 = f[i][0] - x_mu[0][0];
 		double rsxx = e0*e0;
 		double rsyy = 0, rsxy = 0;
 		for (int t = 1; t < T; t++) {
-			e = f[i][t] - mu;
+			e = f[i][t] - x_mu[0][t];
 			rsyy += e*e;
 			rsxy += e*e0;
 			e0 = e;
@@ -434,7 +444,8 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 
 		rss += rsyy - 2*rho*rsxy + rho*rho*rsxx;
 		ALPHA[i][0] = rho;
-		ALPHA[i][2] = mu;
+		for (int j = 0; j < mu.ncols(); j++)
+			ALPHA[i][2+j] = mu[0][j];
 	}
 	// Step 5: Update tau from IG(v0 + n/2, vs + rss/2)
 	double shape = Tau_shape + T*ALPHA.nrows()/2;
