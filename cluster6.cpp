@@ -461,7 +461,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 			ALPHA[i][2+j] = mu[0][j];
 
 		// Step 5: Update tau from IG(v0 + n/2, vs + rss/2)
-		double shape = Tau_shape + (T+1)*ALPHA.nrows()/2;
+		double shape = Tau_shape + (T+1)/2;
 		double rate = Tau_rate + rss/2;
 		tau = ran.gamma(1/rate, shape);
 		ALPHA[i][1] = tau;
