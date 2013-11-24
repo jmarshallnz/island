@@ -73,7 +73,7 @@ if (1) {
 	ylim <- NULL
 	n_alpha <- ncol(design)+2
 	for (i in 1:(ng-1)) {
-		l[[i]] <- density(fmcmc[fd,off+n_alpha*i-3])
+		l[[i]] <- density(fmcmc[fd,off+n_alpha*(i-1)+2])
 		xlim <- range(xlim, l[[i]]$x);
 		ylim <- range(ylim, l[[i]]$y);
 	}
@@ -83,7 +83,7 @@ if (1) {
 	xlim <- NULL
 	ylim <- NULL
 	for (i in 1:(ng-1)) {
-		l[[i]] <- density(fmcmc[fd,off+n_alpha*i-2])
+		l[[i]] <- density(fmcmc[fd,off+n_alpha*(i-1)+3])
 		xlim <- range(xlim, l[[i]]$x);
 		ylim <- range(ylim, l[[i]]$y);
 	}
@@ -94,7 +94,7 @@ if (1) {
 		xlim <- NULL
 		ylim <- NULL
 		for (i in 1:(ng-1)) {
-			l[[i]] <- density(fmcmc[fd,off+n_alpha*i+k-2])
+			l[[i]] <- density(fmcmc[fd,off+n_alpha*(i-1)+k+3])
 			xlim <- range(xlim, l[[i]]$x);
 			ylim <- range(ylim, l[[i]]$y);
 		}
