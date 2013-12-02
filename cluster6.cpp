@@ -377,7 +377,7 @@ void Cluster::update_priors(Matrix<double> &ALPHA, const Matrix<double> &f, Rand
 	const Vector<double> Alpha_mu(ALPHA.ncols()-2,0);		///< Means
 	const Vector<double> Alpha_prec(ALPHA.ncols()-2,0.1);
 	const double Beta_mu = 0, Beta_prec = 1;       ///< Auto-correlation
-	const double Tau_shape = 1, Tau_rate = 5;	///< Precision
+	const double Tau_shape = 1, Tau_rate = 10;	///< Precision
 
 	const int T = f.ncols()-1;
 	for (int i = 0; i < ALPHA.nrows(); i++) {
