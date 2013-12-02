@@ -65,9 +65,31 @@ for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+0],col=i+1)
 plot(fmcmc[fd,off+4],type="l",ylim=range(fmcmc[fd,off+3*1:(ng-1)+1]),col=2,ylab="Value",main="tau")
 for(i in 2:(ng-1)) lines(fmcmc[fd,off+3*i+1],col=i+1)
 
+edge_density <- function(x, x0, x1)
+{
+	d <- density(x, adjust=1.33)
+	d$int <- d$x > x0 & d$x < x1
+	d$x <- d$x[d$int]
+	d$y <- d$y[d$int]
+	d$corr <- pnorm(1, d$x, d$bw) - pnorm(0, d$x, d$bw)
+	d$y <- d$y / d$corr
+	return(d)
+}
+
+edge_density1 <- function(x, x0)
+{
+	d <- density(x, adjust=1.33)
+	d$int <- d$x > x0
+	d$x <- d$x[d$int]
+	d$y <- d$y[d$int]
+	d$corr <- 1 - pnorm(x0, d$x, d$bw)
+	d$y <- d$y / d$corr
+	return(d)
+}
+
 if (1) {
-	pdf("mean_correlation.pdf", width=11, height=8)
-	par(mfrow=c(2,2))
+	pdf("rho_tau.pdf", width=8, height=4)
+	par(mfrow=c(1,2))
 	l <- list()
 	xlim <- NULL
 	ylim <- NULL
@@ -89,17 +111,162 @@ if (1) {
 	}
 	plot(l[[1]], xlim=xlim, ylim=ylim, col=col[o[1]],lwd=2,main="tau")
 	for(i in 2:(ng-1)) lines(l[[i]],col=col[o[i]],lwd=2)
+	dev.off()
+}
 
-	for (k in 1:ncol(design)) {
+if (1) {
+	design_mod <- list()
+	design_name <- list()
+	design_mod[[1]] <- 1;		design_name[[1]] <- "January - March"
+	design_mod[[2]] <- c(1,5);	design_name[[2]] <- "Post Intervention January - March"
+	design_mod[[3]] <- c(1,2);	design_name[[3]] <- "April - June"
+	design_mod[[4]] <- c(1,2,5);	design_name[[4]] <- "Post Intervention April - June"
+	design_mod[[5]] <- c(1,3);	design_name[[5]] <- "July - September"
+	design_mod[[6]] <- c(1,3,5);	design_name[[6]] <- "Post Intervention July - September"
+	design_mod[[7]] <- c(1,4);	design_name[[7]] <- "October - December"
+	design_mod[[8]] <- c(1,4,5);	design_name[[8]] <- "Post Intervention October - December"
+
+	pdf("seasonal_props1.pdf", width=8, height=5)
+	par(mfrow=c(2,2), mai=c(0.5,0.5,0.4,0.2))
+
+	for (k in seq(1,7,by=2)) {
 		xlim <- NULL
 		ylim <- NULL
-		for (i in 1:(ng-1)) {
-			l[[i]] <- density(fmcmc[fd,off+n_alpha*(i-1)+k+3])
+		l <- list()
+		alpha <- matrix(0, sum(fd), ng)
+		for (i in 1:length(design_mod[[k]]))
+			alpha[,1:(ng-1)] <- alpha[,1:(ng-1)] + as.matrix(fmcmc[fd, off+n_alpha*(0:(ng-2))+design_mod[[k]][i]+3])
+		alpha[,ng] <- 1
+		p_alpha <- exp(alpha) / (1 + rowSums(exp(alpha)))
+		for (i in 1:ng) {
+			l[[i]] <- edge_density(p_alpha[,i], 0, 1)
 			xlim <- range(xlim, l[[i]]$x);
 			ylim <- range(ylim, l[[i]]$y);
 		}
-		plot(l[[1]], xlim=xlim, ylim=ylim, col=col[o[1]],lwd=2,main=names(design)[k])
-		for(i in 2:(ng-1)) lines(l[[i]],col=col[o[i]],lwd=2)
+		plot(l[[1]], xlim=c(0,1), ylim=c(0,10), col=col[o[1]],lwd=2,main=design_name[[k]], xlab="Proportion of cases")
+		for(i in 2:ng) lines(l[[i]],col=col[o[i]],lwd=2)
+	}
+	dev.off()
+
+	pdf("seasonal_props2.pdf", width=8, height=5)
+	par(mfrow=c(2,2), mai=c(0.5,0.5,0.4,0.2))
+
+	for (k in seq(1,7,by=2)) {
+		xlim <- NULL
+		ylim <- NULL
+		l <- list()
+		alpha <- matrix(0, sum(fd), ng)
+		for (i in 1:length(design_mod[[k]]))
+			alpha[,1:(ng-1)] <- alpha[,1:(ng-1)] + as.matrix(fmcmc[fd, off+n_alpha*(0:(ng-2))+design_mod[[k]][i]+3])
+		alpha[,ng] <- 1
+		p_alpha <- exp(alpha) / (1 + rowSums(exp(alpha)))
+		for (i in 1:ng) {
+			l[[i]] <- edge_density(p_alpha[,i], 0, 1)
+			xlim <- range(xlim, l[[i]]$x);
+			ylim <- range(ylim, l[[i]]$y);
+		}
+		plot(l[[1]], xlim=c(0,1), ylim=c(0,10), col=col[o[1]],lwd=2,lty="dotted",main=design_name[[k]], xlab="Proportion of cases")
+		for(i in 2:ng) lines(l[[i]],col=col[o[i]],lwd=2, lty="dotted")
+
+		xlim <- NULL
+		ylim <- NULL
+		l <- list()
+		alpha <- matrix(0, sum(fd), ng)
+		for (i in 1:length(design_mod[[k+1]]))
+			alpha[,1:(ng-1)] <- alpha[,1:(ng-1)] + as.matrix(fmcmc[fd, off+n_alpha*(0:(ng-2))+design_mod[[k+1]][i]+3])
+		alpha[,ng] <- 1
+		p_alpha <- exp(alpha) / (1 + rowSums(exp(alpha)))
+		for (i in 1:ng) {
+			l[[i]] <- edge_density(p_alpha[,i], 0, 1)
+			xlim <- range(xlim, l[[i]]$x);
+			ylim <- range(ylim, l[[i]]$y);
+		}
+		for(i in 1:ng) lines(l[[i]],col=col[o[i]],lwd=2)
+	}
+	dev.off()
+}
+
+if (1) {
+	design_mod <- list()
+	design_name <- list()
+	design_count <- list()
+	design_mod[[1]] <- 1;		design_name[[1]] <- "January - March"
+	design_mod[[2]] <- c(1,5);	design_name[[2]] <- "Post Intervention January - March"
+	design_mod[[3]] <- c(1,2);	design_name[[3]] <- "April - June"
+	design_mod[[4]] <- c(1,2,5);	design_name[[4]] <- "Post Intervention April - June"
+	design_mod[[5]] <- c(1,3);	design_name[[5]] <- "July - September"
+	design_mod[[6]] <- c(1,3,5);	design_name[[6]] <- "Post Intervention July - September"
+	design_mod[[7]] <- c(1,4);	design_name[[7]] <- "October - December"
+	design_mod[[8]] <- c(1,4,5);	design_name[[8]] <- "Post Intervention October - December"
+	design_count[[1]] <- sum(human_counts[1:3*4-3])/3;
+	design_count[[2]] <- sum(human_counts[4:8*4-3])/5;
+	design_count[[3]] <- sum(human_counts[1:3*4-2])/3;
+	design_count[[4]] <- sum(human_counts[4:8*4-2])/5;
+	design_count[[5]] <- sum(human_counts[1:3*4-1])/3;
+	design_count[[6]] <- sum(human_counts[4:8*4-1])/5;
+	design_count[[7]] <- sum(human_counts[1:3*4-0])/3;
+	design_count[[8]] <- sum(human_counts[4:8*4-0])/5;
+
+	pdf("seasonal_totals1.pdf", width=8, height=5)
+	par(mfrow=c(2,2), mai=c(0.5,0.5,0.4,0.2))
+
+	for (k in seq(1,7,by=2)) {
+		xlim <- NULL
+		ylim <- NULL
+		l <- list()
+		alpha <- matrix(0, sum(fd), ng)
+		for (i in 1:length(design_mod[[k]]))
+			alpha[,1:(ng-1)] <- alpha[,1:(ng-1)] + as.matrix(fmcmc[fd, off+n_alpha*(0:(ng-2))+design_mod[[k]][i]+3])
+		alpha[,ng] <- 1
+		p_alpha <- design_count[[k]] * exp(alpha) / (1 + rowSums(exp(alpha)))
+		for (i in 1:ng) {
+			l[[i]] <- edge_density1(p_alpha[,i], 0)
+			xlim <- range(xlim, l[[i]]$x);
+			ylim <- range(ylim, l[[i]]$y);
+		}
+		plot(l[[1]], xlim=c(0,70), ylim=c(0,0.3), col=col[o[1]],lwd=2,main=design_name[[k]], xlab="Total cases")
+		for(i in 2:ng) lines(l[[i]],col=col[o[i]],lwd=2)
+		if (k == 3)
+		        legend("topright", legend=sc[o], fill=col[o])
+	}
+	dev.off()
+
+	pdf("seasonal_totals2.pdf", width=8, height=5)
+	par(mfrow=c(2,2), mai=c(0.5,0.5,0.4,0.2))
+
+	for (k in seq(1,7,by=2)) {
+		xlim <- NULL
+		ylim <- NULL
+		l <- list()
+		alpha <- matrix(0, sum(fd), ng)
+		for (i in 1:length(design_mod[[k]]))
+			alpha[,1:(ng-1)] <- alpha[,1:(ng-1)] + as.matrix(fmcmc[fd, off+n_alpha*(0:(ng-2))+design_mod[[k]][i]+3])
+		alpha[,ng] <- 1
+		p_alpha <- design_count[[k]] * exp(alpha) / (1 + rowSums(exp(alpha)))
+		for (i in 1:ng) {
+			l[[i]] <- edge_density1(p_alpha[,i], 0)
+			xlim <- range(xlim, l[[i]]$x);
+			ylim <- range(ylim, l[[i]]$y);
+		}
+		plot(l[[1]], xlim=c(0,70), ylim=c(0,0.3), col=col[o[1]],lwd=2,lty="dotted",main=design_name[[k]], xlab="Total cases")
+		for(i in 2:ng) lines(l[[i]],col=col[o[i]],lwd=2,lty="dotted")
+
+		xlim <- NULL
+		ylim <- NULL
+		l <- list()
+		alpha <- matrix(0, sum(fd), ng)
+		for (i in 1:length(design_mod[[k+1]]))
+			alpha[,1:(ng-1)] <- alpha[,1:(ng-1)] + as.matrix(fmcmc[fd, off+n_alpha*(0:(ng-2))+design_mod[[k+1]][i]+3])
+		alpha[,ng] <- 1
+		p_alpha <- design_count[[k+1]] * exp(alpha) / (1 + rowSums(exp(alpha)))
+		for (i in 1:ng) {
+			l[[i]] <- edge_density1(p_alpha[,i], 0)
+			xlim <- range(xlim, l[[i]]$x);
+			ylim <- range(ylim, l[[i]]$y);
+		}
+		for(i in 1:ng) lines(l[[i]],col=col[o[i]],lwd=2)
+		if (k == 3)
+		        legend("topright", legend=sc[o], fill=col[o])
 	}
 	dev.off()
 }
@@ -247,19 +414,20 @@ for (j in 1:ng)
 		mtext(2004+i, 1, line=0.5, at=4*i-2)
 	for(i in 0:(ymax/20))
 		mtext(i*20,2,line=1,at=i*20)
-	text(2,ymax-2,sc[o[j]], adj=c(0,0))
+	text(0.5,ymax-3,sc[o[j]], adj=c(0,1))
 	box()
 	dev.off()
 }
 # ruminants...
-if (0) {
+if (1) {
 
 	x = c(0,seq(1.5,nt-1.5),nt)
 
-	for (j in 2:3) {
-
-	pdf(paste("ruminant_cis_",sc[o[j]],".pdf",sep=""), width=8, height=3)
+	pdf(paste("totals_ruminants_combined.pdf",sep=""), width=8, height=5)
+	par(mfrow=c(2,1), mar=c(3, 4, 2, 2) + 0.1)
 	ymax <- 30
+
+	for (j in 2:3) {
 
 	plot(NULL, xlim=c(0,nt), ylim=c(0,ymax),ylab="Cases",xlab="", col.axis="transparent", xaxp=c(0,32,8), xaxs="i", yaxs="i", main="")
 
@@ -278,10 +446,29 @@ if (0) {
 		mtext(2004+i, 1, line=0.5, at=4*i-2)
 	for(i in 0:(ymax/10))
 		mtext(i*10,2,line=1,at=i*10)
-	text(2,ymax-3,sc[o[j]])
+	text(0.5,ymax-2,sc[o[j]], adj=c(0,1))
 	box()
-	dev.off()
 	}
+}
+
+if (1) { # proportions for all time
+	pdf("overall_prop.pdf", width=6, height=4)
+
+	p <- matrix(0, ng, 3)
+	for (j in 1:ng)
+	{
+		tot <- rep(0,sum(fd))
+		for (t in 1:nt) {
+			tot <- tot + fmcmc[fd,(t-1)*ng+1+j]*human_counts[t];
+		}
+		p[j,1] = mean(tot/sum(human_counts))
+		p[j,2:3] = quantile(tot/sum(human_counts),c(.025,.975))
+  	}
+
+	COL <- paste(col,"7F",sep="")
+	b <- barplot(p[,1], names=sc[o], col=COL[o], ylim=c(0,1), main="")
+	segments(b, p[,2], b, p[,3], lwd=2)
+	dev.off()
 }
 
 
@@ -325,8 +512,8 @@ for(i in 0:(ng-1)) {
 if (1) {
 	COL = paste(col[c(o,6)],"7F",sep="");
 	for(i in 0:(ng-1)) {
-	pdf(paste("migration_mutation",i+1,".pdf",sep=""), width=3, height=3)
-	par(omi=rep(0,4))
+          pdf(paste("migration_mutation",i+1,".pdf",sep=""), width=3, height=3)
+          par(omi=rep(0,4))
 	  wh0 = which(names(mcmc)==paste("A",i,0,"",sep="."))
 	  whng = which(names(mcmc)==paste("A",i,ng,"",sep="."))
 	  pie(apply(mcmc[gd,wh0:whng],2,mean),col=COL,labels="",radius=1.05)
@@ -334,7 +521,15 @@ if (1) {
 	}
 }
 
-dev.off()
+if (1) {
+	# recombination boxplots...
+	COL = paste(col, "7F", sep="");
+        pdf(paste("recombination.pdf",sep=""), width=3, height=6)
+	wh0 = mcmc[,paste("r",0:(ng-1),sep="")]
+	lab = c("P", "C", "S", "WE", "R")
+	boxplot(wh0, names=lab[o], ylim=c(0,0.06), col=COL[o])
+	dev.off()
+}
 
 ########################################################
 ### PLOT 6                                           ###
@@ -366,6 +561,8 @@ if (0) {
 	image(1:nrow(G),seq(0,1,len=res),t(tp2[,od]),col=COL[cod],ylab="Source probability",xlab="Human cases",bty="n")
 }
 
+dev.off()
+
 ##########################################################
 ### TABLE 4                                            ###
 ### PROBABILITIES OF SOURCE ATTRIBUTION FOR EACH HUMAN ###
@@ -379,4 +576,3 @@ if (0) {
 colnames(g) <- sc[o]
 print(g)
 
-dev.off()
