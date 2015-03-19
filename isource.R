@@ -1,10 +1,10 @@
-sc <- c("Poultry","Cattle","Sheep", "Water-Environment", "Ruminants")
-o <- c(1,2,3,4)
+sc <- c("Poultry","Cattle","Sheep", "Water-Environment", "Ruminants", "Other")
+o <- c(1,5,4,6)
 col = c("#FF7F00","#CF0000","#004FCF", "#009F9F","#8F006F","#9F5F3F","#FFAFAF")
 #col = brewer.pal(8, "Set1")[c(5,1,2,3,4,7,8)]
 
 ng = length(o)  # TODO: Automate this
-nt = 32 # TODO: Automate this
+nt = 36 # TODO: Automate this
 
 #########################
 ### READ IN THE FILES ###
@@ -12,7 +12,7 @@ nt = 32 # TODO: Automate this
 ### SET THE DIRECTORY
 mcmc_dir = "" #~/Documents/C++/Campy/source/Distribute/XP/"
 ### LIST THE FILENAME(S)
-fnames = c("out2")
+fnames = c("out")
 ### READ IN THE FILES (MAKE TAKE A WHILE)
 mcmc = NULL; fmcmc = NULL;
 for(i in 1:length(fnames)) {
