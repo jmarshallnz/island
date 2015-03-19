@@ -234,7 +234,7 @@ void Cluster::open_all(const char* filesource, const char *filehuman, const char
 	ntime++;
 	if (ntime != TSVhuman.n_values()[nloc+1])
 		error("Human times should be sequential");
-	cout << "Found " << ntime << "times" << endl;
+	cout << "Found " << ntime << " times, and we have " << TSVdesign.data.nrows() << " rows in the design matrix" << endl;
 	if (ntime+1 != TSVdesign.data.nrows())
 		error("Design matrix should have the same rows as there are times");
 	X.resize(TSVdesign.data.ncols(), TSVdesign.data.nrows());
