@@ -250,8 +250,6 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	int i, j, h = human.nrows();
 	/* Open the file */
 	ofstream out(filename);
-	string gfilename = string("g_") + string(filename);
-	ofstream o2(gfilename.c_str());
 	string ffilename = string("f_") + string(filename);
 	ofstream o3(ffilename.c_str());
 	char tab = '\t';
@@ -266,11 +264,11 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	o3 << "iter";
 	for(i=0;i<ng;i++) o3 << tab << "f" << i;
 	o3 << endl;
-	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o2,o3,filename);
+	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o3,filename);
 }
 
 /* This version uses the clonal frame version of the likelihood */
-void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o2, ofstream &o3, const std::string &filename) {
+void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o3, const std::string &filename) {
 	precalc();
 	int i,j;
 	/* Initialize the Markov chain */
@@ -554,33 +552,4 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	cout << endl;
 	out.close();
 	o3.close();
-
-	// Re-normalise the posterior probabilities of source
-	for(i=0;i<h;i++) {
-		for(j=0;j<ng;j++) {
-			GLIK[i][j] /= (double)ctr;
-		}
-	}
-	//Vector<int> jmax(h);
-	//for(i=0;i<h;i++) {
-	//	jmax[i] = 0;
-	//	mydouble likmax = GLIK[i][0];
-	//	for(j=1;j<ng;j++) {
-	//		if(GLIK[i][j]>likmax) {
-	//			jmax[i] = j;
-	//			likmax = GLIK[i][j];
-	//		}
-	//	}
-	//}
-	//o2 << jmax[0];
-	//for(i=1;i<h;i++) o2 << tab << jmax[i];
-	//for(i=0;i<h;i++) o2 << tab << GLIK[i][jmax[i]].todouble();
-	for(i=0;i<h;i++) {
-		for(j=0;j<ng;j++) {
-			if(!(i==0 && j==0)) o2 << tab;
-			o2 << GLIK[i][j].todouble();
-		}
-	}
-	o2 << endl;
-	o2.close();
 }
