@@ -11,7 +11,7 @@ all : isource
 
 ## LINK
 isource : $(objects)
-	gcc -w -O3 -o isource $(objects) -lstdc++
+	gcc -w -O3 -o isource $(objects) -lstdc++ -lm
 
 ## COMPILE
 main.o : main.cpp $(headers)
