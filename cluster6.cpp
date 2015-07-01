@@ -379,8 +379,33 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	const int burnin = (int)floor((double)niter*.1);
 	for(iter=0;iter<niter;iter++) {
 		if(iter>=burnin && (iter-burnin)%inc==0) {
+
+		  /* Now dump LIKHI for this iteration.
+		     Weird that this has nothing to do with the thinning */
+
+		  /* Compute likelihood to compute LIKHI[use] */
 			mydouble flik = calc_lik6(LIKHI[use],A[use],a[use],b[use],R[use],F);
 
+		  stringstream s; s << iter;
+		  std::string file = "phi_" + filename + s.str();
+		  ofstream o(file.c_str());
+		  char tab = '\t';
+		  o << "Isolate";
+		  for (int i = 0; i < human.ncols(); i++)
+		    o << tab << "Loci" << i;
+		  for (int i = 0; i < ng; i++)
+		    out << tab << "Source" << i;
+		  o << "\n";
+		  const int num_human = LIKHI[use].nrows();
+		  for(int h = 0; h < num_human; h++) {
+		    o << h;
+		    for (int i = 0; i < human.ncols(); i++)
+		      o << tab << human[h][i];
+		    for(int j = 0; j < ng; j++)
+          o << tab << LIKHI[use][h][j].LOG();
+        o << "\n";
+		  }
+		  o.close();
 		}
 		else {
 			newlik = likelihood;
