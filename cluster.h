@@ -98,7 +98,7 @@ public:
 	void mcmc6e(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, ofstream &out, const char* gfilename);
 	// mcmc6f infers M and R from seqs of known origin, and runs 100 side-chains to infer F given M and R
 	void mcmc6f(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename);
-	void mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o2, ofstream &o3);
+	void mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o2, ofstream &o3, const std::string &filename);
 	// mcmc6g is the same as mcmc6f, but also performs posterior predictive goodness-of-fit simulations
 	void mcmc6g(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename);
 	void mcmc6g(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o2, ofstream &o3, ofstream &o4);

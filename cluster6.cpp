@@ -266,11 +266,11 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	o3 << "iter";
 	for(i=0;i<ng;i++) o3 << tab << "f" << i;
 	o3 << endl;
-	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o2,o3);
+	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o2,o3,filename);
 }
 
 /* This version uses the clonal frame version of the likelihood */
-void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o2, ofstream &o3) {
+void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o2, ofstream &o3, const std::string &filename) {
 	precalc();
 	int i,j;
 	/* Initialize the Markov chain */
