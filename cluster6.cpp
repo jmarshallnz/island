@@ -379,86 +379,8 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	const int burnin = (int)floor((double)niter*.1);
 	for(iter=0;iter<niter;iter++) {
 		if(iter>=burnin && (iter-burnin)%inc==0) {
-			/* Draw our hyper-prior parameters */
-			for(j=0; j < f.size(); j++)
-				f[j] = ran.normal(ALPHA[j], TAU[j]);
-			/* Calculate our F's */
-			calc_logit_F(f,F);
-
-			/* Compute likelihood */
 			mydouble flik = calc_lik6(LIKHI[use],A[use],a[use],b[use],R[use],F);
 
-			/* Side chain */
-			for(fiter=0;fiter<fniter;fiter++) {
-				move = (ran.U()<.05) ? 2 : 3; /* Switching likelihood */
-				switch(move) {
-				case 2: {
-					/* update f_logit (switching move)
-					   choose two values to switch, ensuring they're different */
-					int id1 = ran.discrete(0,f.size()-1);
-					int id2 = ran.discrete(0,f.size()-2);
-					if(id2==id1) id2 = f.size()-1;
-					f_prime = f;
-					SWAP(f_prime[id1],f_prime[id2]);
-					calc_logit_F(f_prime,F_prime);
-					logalpha = 1.0;
-					// Prior ratio equals 1 because prior is symmetric
-					// Symmetric proposal so Hastings ratio equals 1
-					// Likelihood ratio
-					mydouble lik_ratio = calc_lik6(LIKHI[use],LIKHI[notuse],F_prime);
-
-					logalpha *= lik_ratio;
-					if(logalpha.LOG()>=0.0 || ran.U()<logalpha.todouble()) {	// accept
-						f = f_prime;
-						F = F_prime;
-						for(i=0;i<h;i++) LIKHI[use][i][ng] = LIKHI[notuse][i][ng];
-						flik *= lik_ratio;
-					}
-					else { // reject
-					}
-					break;
-				}
-				case 3: {// update f (II. Using a Metropolis-Hastings step with normal proposal)
-					int id = ran.discrete(0,f.size()-1);
-					f_prime = f;
-					f_prime[id] = ran.normal(f[id],sigma_f);
-					calc_logit_F(f_prime,F_prime);
-					// Prior-Hastings ratio = Proposal(f,f')/Proposal(f',f) * Prior(f')/Prior(f) 
-					// Proposal is symmetric, so this drops down to the prior. Prior is 
-					// exp((f^2-f'^2)/(2*tau^2))
-					logalpha.setlog((f[id]*f[id]-f_prime[id]*f_prime[id])/(2*TAU[id]*TAU[id]));
-					// Likelihood ratio
-					mydouble lik_ratio = calc_lik6(LIKHI[use],LIKHI[notuse],F_prime);
-
-					logalpha *= lik_ratio;
-					if(logalpha.LOG()>=0.0 || ran.U()<logalpha.todouble()) {	// accept
-						f = f_prime;
-						F = F_prime;
-						for(i=0;i<h;i++) LIKHI[use][i][ng] = LIKHI[notuse][i][ng];
-						flik *= lik_ratio;
-					}
-					else { // reject
-					}
-					break;
-				}
-				default:
-					error("Cluster::mcmc6f(): Undefined move in f chain");
-				}
-				if(fiter%100==0) {
-					o3 << fiter;
-					for(i=0;i<ng;i++) o3 << tab << F[i].todouble();
-					o3 << endl;
-					if(fiter>=fburnin) {
-						++ctr;
-						for(i=0;i<h;i++) {
-							for(j=0;j<ng;j++) {
-								GLIK[i][j] += F[j] * LIKHI[use][i][j] / LIKHI[use][i][ng];
-							}
-						}
-					}
-				}
-			}
-			cout << "\rDone f chain ";
 		}
 		else {
 			newlik = likelihood;
