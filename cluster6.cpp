@@ -401,7 +401,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			o << "\n";
 			const int num_human = LIKHI[use].nrows();
 			for(int h = 0; h < num_human; h++) {
-				o << tab << h;
+				o << h;
 				for (int i = 0; i < human.ncols(); i++)
 					o << tab << human[h][i];
 				for(int j = 0; j < ng; j++)
