@@ -4,22 +4,10 @@
 #include "myutils.h"
 #include "tsv.h"
 #include "mydouble.h"
-//#include "powell.h"
 #include <fstream>
 #include <time.h>
 
 using namespace myutils;
-
-class Cluster;
-
-//class ML : public PowellFunction {
-//public:
-//  Cluster &clust;
-//  /* Constructor */
-//  ML(Cluster &clust_in) : clust(clust_in) {}
-//  /* Call f(theta,rho,rhostar) */
-//  double f(const vector<double> &x);
-//};
 
 class Cluster {
 public:
