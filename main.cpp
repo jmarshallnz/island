@@ -19,9 +19,6 @@ int main(const int argc, const char* argv[]) {
 
 	Cluster clust;
 	clust.open_all(train_file);
-	double HS = 0., HT = 0.;
-	cout << "FST = " << clust.FST(HS,HT);
-	cout << "\tHS = " << HS << "\tHT = " << HT << endl;
 
 #if defined(_MODEL6)
 	cout << "Linked model" << endl;

@@ -108,28 +108,27 @@ mydouble Cluster::likHi6(const int id, const int i, Matrix<double> &a, Matrix< V
 
 void Cluster::precalc() {
 
-	human_unique = Matrix<bool>(h,nloc);
+	human_unique = Matrix<bool>(human.nrows(),nloc);
 	beast_unique = Vector< Matrix<bool> >(ng);
 	for (int i = 0; i < ng; i++)
 	  beast_unique[i] = Matrix<bool>(nST[i],nloc);
 
-	same = new bool***[h];
-	for(i=0;i<h;i++) {
+	same = new bool***[human.nrows()];
+	for(int i = 0; i < human.nrows(); i++) {
 		same[i] = new bool**[ng];
-		for(ii=0;ii<ng;ii++) {
+		for(int ii = 0; ii < ng; ii++) {
 			same[i][ii] = new bool*[nST[ii]];
-			for(jj=0;jj<nST[ii];jj++) {
+			for(int jj = 0; jj < nST[ii]; jj++) {
 				same[i][ii][jj] = new bool[nloc];
-				for(l=0;l<nloc;l++) {
+				for(int l = 0; l < nloc; l++) {
 					same[i][ii][jj][l] = (human[i][l]==MLST[ii][jj][l]);
 				}
 			}
 		}
-		for(l=0;l<nloc;l++) {
+		for(int l = 0; l < nloc; l++) {
 			int human_allele = human[i][l];
-			if(human_allele>=acount[ng][l].size()
-				|| acount[ng][l][human_allele]==0) human_unique[i][l] = true;
-			else human_unique[i][l] = false;
+		  human_unique[i][l] = (human_allele>=acount[ng][l].size()
+                            || acount[ng][l][human_allele]==0);
 		}
 	}
 	puniq = Vector<mydouble>(nloc);
@@ -463,4 +462,61 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	cout << endl;
 	out.close();
 	o3.close();
+}
+
+// helper stuff below here
+
+// Assumes A is correctly sized
+void Cluster::calc_A(Matrix<mydouble> &a, Matrix<double> &A) {
+  int i,j;
+  const int n = a.ncols()-1;
+  for(i=0;i<a.nrows();i++) {
+    a[i][n] = 0.0;
+    for(j=0;j<n;j++) a[i][n] += a[i][j];
+    for(j=0;j<n;j++) A[i][j] = (a[i][j]/a[i][n]).todouble();
+  }
+}
+
+// Assumes A is correctly sized
+void Cluster::calc_Ai(Matrix<mydouble> &a, Matrix<double> &A, const int i) {
+  int j;
+  const int n = a.ncols()-1;
+  a[i][n] = 0.0;
+  for(j=0;j<n;j++) a[i][n] += a[i][j];
+  for(j=0;j<n;j++) A[i][j] = (a[i][j]/a[i][n]).todouble();
+}
+
+// Assumes R is correctly sized
+void Cluster::calc_R(Matrix<mydouble> &r, Matrix<double> &R) {
+  int i,j;
+  const int n = r.ncols()-1;
+  for(i=0;i<r.nrows();i++) {
+    r[i][n] = 0.0;
+    for(j=0;j<n;j++) r[i][n] += r[i][j];
+    for(j=0;j<n;j++) R[i][j] = (r[i][j]/r[i][n]).todouble();
+  }
+}
+
+// Assumes R is correctly sized
+void Cluster::calc_Ri(Matrix<mydouble> &r, Matrix<double> &R, const int i) {
+  int j;
+  const int n = r.ncols()-1;
+  r[i][n] = 0.0;
+  for(j=0;j<n;j++) r[i][n] += r[i][j];
+  for(j=0;j<n;j++) R[i][j] = (r[i][j]/r[i][n]).todouble();
+}
+
+void Cluster::recalc_b(Matrix<double> &a, Matrix< Vector<double> > &b) {
+  int i,j,k,l;
+  for(i=0;i<ng;i++) {
+    for(j=0;j<nloc;j++) {
+      for(k=0;k<acount[i][j].size();k++) {
+        b[i][j][k] = 0.0;
+        for(l=0;l<ng;l++) {
+          b[i][j][k] += acount[l][j][k] * a[i][l];
+          //					bk[i][j][k] += (acount[l][j][k]*(double)size[l]-1.0)/(double)(size[l]-1) * a[i][l];
+        }
+      }
+    }
+  }
 }
