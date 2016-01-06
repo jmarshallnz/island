@@ -18,9 +18,9 @@ namespace myutils {
 template<typename T>
 class sort_by_vector : public std::binary_function<int,int,bool>
 {
-	const vector<T> &sort_by;
+	const std::vector<T> &sort_by;
 public:
-	sort_by_vector(const vector<T> &sort_by_in) : sort_by(sort_by_in) {}
+	sort_by_vector(const std::vector<T> &sort_by_in) : sort_by(sort_by_in) {}
 
 	bool operator()(int a, int b) const
 	{

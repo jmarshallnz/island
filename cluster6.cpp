@@ -1,5 +1,7 @@
 #include "cluster.h"
 
+#include <sstream> // for the stream stuff
+
 mydouble Cluster::known_source_lik6_composite(Matrix<double> &a, Matrix< Vector<double> > &b, Matrix<double> &r) {
 #if defined(_MODEL4)
 	return known_source_lik4_composite(a,b);

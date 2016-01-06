@@ -1,5 +1,5 @@
 objects = main.o cluster.o cluster6.o
-myutils = cmatrix.h DNA.h lotri_matrix.h \
+myutils = cmatrix.h lotri_matrix.h \
 	matrix.h mydouble.h myerror.h myutils.h \
 	pause.h random.h sort.h tsv.h utils.h vector.h
 headers = cluster.h $(myutils)
