@@ -98,18 +98,18 @@ public:
 	}
 	mydouble operator/(const mydouble &mydbl) const {
 		mydouble a;
-		if(mydbl.zero) error("mydouble::operator/(const mydouble&): division by zero");
+		if(mydbl.zero) myutils::error("mydouble::operator/(const mydouble&): division by zero");
 		else if(zero) a.setzero();
 		else a.setlog(_log - mydbl._log);
 		return a;
 	}
 	mydouble& operator/=(const double &dbl) {
-		if(dbl==0.0) error("mydouble::operator/=(const double&): division by zero");
+		if(dbl==0.0) myutils::error("mydouble::operator/=(const double&): division by zero");
 		else if(!zero) _log -= mydouble(dbl)._log;
 		return *this;
 	}
 	mydouble& operator/=(const mydouble &mydbl) {
-		if(mydbl.zero) error("mydouble::operator/=(const mydouble&): division by zero");
+		if(mydbl.zero) myutils::error("mydouble::operator/=(const mydouble&): division by zero");
 		else if(!zero) _log -= mydbl._log;
 		return *this;
 	}
@@ -155,7 +155,7 @@ public:
 	mydouble operator-(const mydouble &mydbl) const {
 		mydouble a;
 		if(mydbl.zero) a = mydouble(*this);
-		else if(zero) error("mydouble::operator-(const mydouble&): subtracting a positive number from zero");
+		else if(zero) myutils::error("mydouble::operator-(const mydouble&): subtracting a positive number from zero");
 		else {
 			/* diff must always be positive */
 			double diff = _log - mydbl._log;
@@ -171,7 +171,7 @@ public:
 	}
 	mydouble& operator-=(const mydouble &mydbl) {
 		if(!mydbl.zero) {
-			if(zero) error("mydouble::operator-=(const mydouble&): subtracting a positive number from zero");
+			if(zero) myutils::error("mydouble::operator-=(const mydouble&): subtracting a positive number from zero");
 			/* diff must always be positive */
 			double diff = _log - mydbl._log;
 			if(diff==0.0) setzero();

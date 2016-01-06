@@ -4,7 +4,10 @@
 #include "myutils.h"
 #include "cluster.h"
 
+#include <iostream>
+
 using namespace myutils;
+using namespace std;
 
 int main(const int argc, const char* argv[]) {
 	if(argc!=6 && argc!=7) error("SYNTAX: in_file out_file niter thinning alpha [seed]");
@@ -21,7 +24,7 @@ int main(const int argc, const char* argv[]) {
 	clust.open_all(train_file);
 
 #if defined(_MODEL6)
-	cout << "Linked model" << endl;
+	std::cout << "Linked model" << std::endl;
 	clust.mcmc6f(alpha,1.0,1.0,ran,niter,thinning,out_file);
 #else
 	error("This program was compiled under an unrecognized model");

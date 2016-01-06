@@ -1,6 +1,7 @@
 #include "cluster.h"
 
 #include <sstream> // for the stream stuff
+#include <iostream>
 
 using namespace myutils;
 
@@ -166,9 +167,9 @@ void Cluster::precalc() {
 void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename) {
 	int i, j;
 	/* Open the file */
-	ofstream out(filename);
-	string ffilename = string("f_") + string(filename);
-	ofstream o3(ffilename.c_str());
+	std::ofstream out(filename);
+	std::string ffilename = std::string("f_") + std::string(filename);
+	std::ofstream o3(ffilename.c_str());
 	char tab = '\t';
 	out << "iter";
 	for(i=0;i<ng;i++) for(j=0;j<ng+1;j++) out << tab << "A[" << i << "," << j << "]";
@@ -177,15 +178,15 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	out << tab << "loglik2";
 	out << tab << "logalpha";
 	out << tab << "move";
-	out << endl;
+	out << std::endl;
 	o3 << "iter";
 	for(i=0;i<ng;i++) o3 << tab << "f" << i;
-	o3 << endl;
+	o3 << std::endl;
 	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o3,filename);
 }
 
 /* This version uses the clonal frame version of the likelihood */
-void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o3, const std::string &filename) {
+void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, std::ofstream &out, std::ofstream &o3, const std::string &filename) {
 	precalc();
 	int i,j;
 	/* Initialize the Markov chain */
@@ -265,11 +266,11 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	out << tab << likelihood.LOG();
 	out << tab << "0";
 	out << tab << "NA";
-	out << endl;
+	out << std::endl;
 
 	clock_t start = clock(), current;
 	clock_t next = start + (clock_t)CLOCKS_PER_SEC;
-	cout << "Done 0 of " << niter << " iterations";
+	std::cout << "Done 0 of " << niter << " iterations";
 
 	mydouble newlik, logalpha;
 	int iter, fiter, move, ctr = 0;
@@ -297,9 +298,9 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			}
 
 		  /* Dump it to the file */
-		  stringstream s; s << iter;
+		  std::stringstream s; s << iter;
 		  std::string file = "phi_" + s.str() + "_" + filename;
-		  ofstream o(file.c_str());
+		  std::ofstream o(file.c_str());
 		  char tab = '\t';
 		  o << "Isolate";
 		  for (int i = 0; i < human.ncols(); i++)
@@ -456,14 +457,14 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			out << tab << newlik.LOG();
 			out << tab << logalpha.LOG();
 			out << tab << move;
-			out << endl;
+			out << std::endl;
 		}
 		if((current=clock())>next) {
-			cout << "\rDone " << (iter+1) << " of " << niter << " iterations in " << (double)(current-start)/CLOCKS_PER_SEC << " s " << flush;
+		  std::cout << "\rDone " << (iter+1) << " of " << niter << " iterations in " << (double)(current-start)/CLOCKS_PER_SEC << " s " << std::flush;
 			next = current + (clock_t)CLOCKS_PER_SEC;
 		}
 	}
-	cout << endl;
+	std::cout << std::endl;
 	out.close();
 	o3.close();
 }

@@ -1,5 +1,7 @@
 #include "cluster.h"
 
+#include "tsv.h"
+
 using namespace myutils;
 
 int Cluster::multinom(Vector<double> &p, Random &ran) {

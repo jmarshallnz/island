@@ -2,10 +2,8 @@
 #define _CLUSTER_H_
 
 #include "myutils.h"
-#include "tsv.h"
 #include "mydouble.h"
 #include <fstream>
-#include <time.h>
 
 class Cluster {
 public:
@@ -47,7 +45,7 @@ public:
 
 	// mcmc6f infers M and R from seqs of known origin, and runs 100 side-chains to infer F given M and R
 	void mcmc6f(const double alpha, const double beta, const double gamma, myutils::Random &ran, const int niter, const int thin, const char* filename);
-	void mcmc6f(const double alpha, const double beta, const double gamma_, myutils::Random &ran, const int niter, const int thin, ofstream &out, ofstream &o3, const std::string &filename);
+	void mcmc6f(const double alpha, const double beta, const double gamma_, myutils::Random &ran, const int niter, const int thin, std::ofstream &out, std::ofstream &o3, const std::string &filename);
 
 	~Cluster() {
 		if(init) {
@@ -65,7 +63,7 @@ public:
 	mydouble likHi6(const int id, const int i, myutils::Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b, myutils::Matrix<double> &r);
 	mydouble known_source_lik6_composite(myutils::Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b, myutils::Matrix<double> &r);
 
-	void recalc_b(Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b);
+	void recalc_b(myutils::Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b);
 	void calc_A(myutils::Matrix<mydouble> &a, myutils::Matrix<double> &A);
 	void calc_Ai(myutils::Matrix<mydouble> &a, myutils::Matrix<double> &A, const int i);
 	void calc_R(myutils::Matrix<mydouble> &r, myutils::Matrix<double> &R);
