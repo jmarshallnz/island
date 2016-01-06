@@ -11,7 +11,6 @@
 
 #include "myerror.h"
 #include "utils.h"
-#include "cmatrix.h"
 #include "vector.h"
 #include "matrix.h"
 #include "lotri_matrix.h"
