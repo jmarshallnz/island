@@ -7,31 +7,29 @@
 #include <fstream>
 #include <time.h>
 
-using namespace myutils;
-
 class Cluster {
 public:
 	int ng;							// # groups
-	Vector< Matrix<int> > MLST;		// haps for each
-	Vector<int> size;				// size of each
-	Vector<mydouble> SIZE;			// size of each
-	Vector<int> nST;				// # unique STs in each
-	Matrix<int> nalleles;			// nalleles[i][j] # unique alleles in group i at locus j
-	Vector< Vector<double> > FREQ;		// freq of STs in each group
-	Vector< Vector<double> > ABUN;		// abundance of STs in each group
-	Vector< Vector<mydouble> > freq;	// freq of STs in each group
-	Vector< Vector<mydouble> > abun;	// abundance of STs in each group
-	Matrix< Vector<double> > acount;	// acount[i][j][k] gives the count, in pop i, and locus j, of allele k
+  myutils::Vector< myutils::Matrix<int> > MLST;		// haps for each
+  myutils::Vector<int> size;				// size of each
+  myutils::Vector<mydouble> SIZE;			// size of each
+  myutils::Vector<int> nST;				// # unique STs in each
+  myutils::Matrix<int> nalleles;			// nalleles[i][j] # unique alleles in group i at locus j
+  myutils::Vector< myutils::Vector<double> > FREQ;		// freq of STs in each group
+  myutils::Vector< myutils::Vector<double> > ABUN;		// abundance of STs in each group
+  myutils::Vector< myutils::Vector<mydouble> > freq;	// freq of STs in each group
+  myutils::Vector< myutils::Vector<mydouble> > abun;	// abundance of STs in each group
+  myutils::Matrix< myutils::Vector<double> > acount;	// acount[i][j][k] gives the count, in pop i, and locus j, of allele k
 	int nloc;						// # loci
 	bool init;
 	double A;
 
-	Matrix<int> human;				// those sampled from humans
+	myutils::Matrix<int> human;				// those sampled from humans
 
 	mydouble punique;
-	Vector<mydouble> puniq,psame,pdiff;
-	Matrix<bool> human_unique;
-	Vector< Matrix<bool> > beast_unique;
+	myutils::Vector<mydouble> puniq,psame,pdiff;
+	myutils::Matrix<bool> human_unique;
+	myutils::Vector< myutils::Matrix<bool> > beast_unique;
 	bool ****same;
 	mydouble one;
 	bool *****ksame;
@@ -48,8 +46,8 @@ public:
 	void open_all(const char* filename);
 
 	// mcmc6f infers M and R from seqs of known origin, and runs 100 side-chains to infer F given M and R
-	void mcmc6f(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename);
-	void mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, ofstream &out, ofstream &o3, const std::string &filename);
+	void mcmc6f(const double alpha, const double beta, const double gamma, myutils::Random &ran, const int niter, const int thin, const char* filename);
+	void mcmc6f(const double alpha, const double beta, const double gamma_, myutils::Random &ran, const int niter, const int thin, ofstream &out, ofstream &o3, const std::string &filename);
 
 	~Cluster() {
 		if(init) {
@@ -63,18 +61,18 @@ public:
 		}
 	}
 
-	int multinom(Vector<double> &p, Random &ran);
-	mydouble likHi6(const int id, const int i, Matrix<double> &a, Matrix< Vector<double> > &b, Matrix<double> &r);
-	mydouble known_source_lik6_composite(Matrix<double> &a, Matrix< Vector<double> > &b, Matrix<double> &r);
+	int multinom(myutils::Vector<double> &p, myutils::Random &ran);
+	mydouble likHi6(const int id, const int i, myutils::Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b, myutils::Matrix<double> &r);
+	mydouble known_source_lik6_composite(myutils::Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b, myutils::Matrix<double> &r);
 
-	void recalc_b(Matrix<double> &a, Matrix< Vector<double> > &b);
-	void calc_A(Matrix<mydouble> &a, Matrix<double> &A);
-	void calc_Ai(Matrix<mydouble> &a, Matrix<double> &A, const int i);
-	void calc_R(Matrix<mydouble> &r, Matrix<double> &R);
-	void calc_Ri(Matrix<mydouble> &r, Matrix<double> &R, const int i);
+	void recalc_b(Matrix<double> &a, myutils::Matrix< myutils::Vector<double> > &b);
+	void calc_A(myutils::Matrix<mydouble> &a, myutils::Matrix<double> &A);
+	void calc_Ai(myutils::Matrix<mydouble> &a, myutils::Matrix<double> &A, const int i);
+	void calc_R(myutils::Matrix<mydouble> &r, myutils::Matrix<double> &R);
+	void calc_Ri(myutils::Matrix<mydouble> &r, myutils::Matrix<double> &R, const int i);
 	void precalc();
-	template<typename T> void pSWAP(Vector<T> &a, Vector<T> &b);
-	template<typename T> void pSWAP(Matrix<T> &a, Matrix<T> &b);
+	template<typename T> void pSWAP(myutils::Vector<T> &a, myutils::Vector<T> &b);
+	template<typename T> void pSWAP(myutils::Matrix<T> &a, myutils::Matrix<T> &b);
 };
 
 #endif//_CLUSTER_H_

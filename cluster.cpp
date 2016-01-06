@@ -1,5 +1,7 @@
 #include "cluster.h"
 
+using namespace myutils;
+
 int Cluster::multinom(Vector<double> &p, Random &ran) {
 	double U = ran.U();
 	int i;
