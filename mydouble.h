@@ -5,8 +5,6 @@
 #include <math.h>
 #include "myerror.h"
 
-using myutils::error;
-
 /*	This class behaves to the user like a non-negative double, but
 	is stored internally as the natural logarithm. Standard mathematical
 	operations are performed on the logarithm of the number so that it
