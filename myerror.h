@@ -9,7 +9,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-//#include <pause.h>
 
 namespace myutils
 {
@@ -17,7 +16,6 @@ namespace myutils
 	{
 		printf("ERROR: ");
 		printf("%s\n", error_text);
-//		pause();
 		exit(13);
 	}
 

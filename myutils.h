@@ -16,6 +16,5 @@
 #include "matrix.h"
 #include "lotri_matrix.h"
 #include "random.h"
-#include "pause.h"
 
 #endif
