@@ -107,12 +107,11 @@ mydouble Cluster::likHi6(const int id, const int i, Matrix<double> &a, Matrix< V
 }
 
 void Cluster::precalc() {
-	int i,j,ii,jj,l;
-	const int h = human.nrows();
 
 	human_unique = Matrix<bool>(h,nloc);
 	beast_unique = Vector< Matrix<bool> >(ng);
-	for(i=0;i<ng;i++) beast_unique[i] = Matrix<bool>(nST[i],nloc);
+	for (int i = 0; i < ng; i++)
+	  beast_unique[i] = Matrix<bool>(nST[i],nloc);
 
 	same = new bool***[h];
 	for(i=0;i<h;i++) {
@@ -138,116 +137,31 @@ void Cluster::precalc() {
 	pdiff = Vector<mydouble>(nloc);
 
 	ksame = new bool****[ng];
-	for(i=0;i<ng;i++) {
+	for(int i = 0; i < ng; i++) {
 		ksame[i] = new bool***[nST[i]];
-		for(j=0;j<nST[i];j++) {
+		for(int j = 0; j < nST[i]; j++) {
 			ksame[i][j] = new bool**[ng];
-			for(ii=0;ii<ng;ii++) {
+			for(int ii = 0; ii < ng; ii++) {
 				ksame[i][j][ii] = new bool*[nST[ii]];
-				for(jj=0;jj<nST[ii];jj++) {
+				for(int jj = 0; jj < nST[ii]; jj++) {
 					ksame[i][j][ii][jj] = new bool[nloc];
-					for(l=0;l<nloc;l++) {
-						ksame[i][j][ii][jj][l] = (MLST[i][j][l]==MLST[ii][jj][l]);
+					for(int l = 0; l < nloc; l++) {
+						ksame[i][j][ii][jj][l] = (MLST[i][j][l] == MLST[ii][jj][l]);
 					}
 				}
 			}
-			for(l=0;l<nloc;l++) {
+			for(int l = 0; l < nloc; l++) {
 				int allele = MLST[i][j][l];
 				double num = acount[ng][l][allele] * (double)size[ng];
-				if(num<1.1) beast_unique[i][j][l] = true;
-				else beast_unique[i][j][l] = false;
+				beast_unique[i][j][l] = (num < 1.1);
 			}
 		}
 	}
-
-	// Identifies haplotypes that are identical, to save recalculating the likelihoods
-	hid = Vector<int>(h);
-	for(i=0;i<h;i++) {
-		for(j=0;j<i;j++) {
-			bool same = true;
-			for(l=0;l<nloc;l++) {
-				if(human[i][l]!=human[j][l]) {
-					same = false;
-					break;
-				}
-			}
-			if(same) break;
-		}
-		hid[i] = j;
-	}
-	G = Vector<int>(h);
-	simLIK = Matrix<mydouble>(h,ng);
-	identicals = Vector<int>(h);
-	simMLST = Matrix<int>(h,nloc);
-}
-
-mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI, Matrix<double> &A, Matrix<mydouble> &a, Matrix< Vector<double> > &b, Matrix<double> &R, Vector<mydouble> &F) {
-#if defined(_FLAT_LIKELIHOOD)
-	return mydouble(1.0);
-#endif
-	int i,j;
-	const int h = LIKHI.nrows();
-	mydouble lik = 1.0;
-	for(i=0;i<h;i++) {
-		if(hid[i]<i) { ///< have an identical haplotype, so copy the likelihood over
-			const int ii = hid[i];
-			for(j=0;j<ng;j++) LIKHI[i][j] = LIKHI[ii][j];
-			LIKHI[i][ng] = LIKHI[ii][ng];
-		}
-		else {	// calculate the likelihood
-			LIKHI[i][ng] = 0.0;
-			for(j=0;j<ng;j++) {
-				punique = a[j][ng];			// NOTE USE of little a here!!!
-				LIKHI[i][j] = likHi6(i,j,A,b,R);
-				LIKHI[i][ng] += F[j] * LIKHI[i][j];
-			}
-		}
-		lik *= LIKHI[i][ng];
-	}
-	return lik;
-}
-
-mydouble Cluster::calc_lik6(Matrix<mydouble> &LIKHI_use, Matrix<mydouble> &LIKHI_notuse, Vector<mydouble> &F_prime) {
-#if defined(_FLAT_LIKELIHOOD)
-	return mydouble(1.0);
-#endif
-	int i,j;
-	const int h = LIKHI_use.nrows();
-	mydouble lik = 1.0;
-	for(i=0;i<h;i++) {
-		if(hid[i]<i) {
-			const int ii = hid[i];
-			LIKHI_notuse[i][ng] = LIKHI_notuse[ii][ng];
-		}
-		else {
-			LIKHI_notuse[i][ng] = 0.0;
-			for(j=0;j<ng;j++) {
-				LIKHI_notuse[i][ng] += F_prime[j] * LIKHI_use[i][j];
-			}
-		}
-		lik *= LIKHI_notuse[i][ng] / LIKHI_use[i][ng];
-	}
-	return lik;
-}
-
-void calc_logit_F(const Vector<double> f, Vector<mydouble> &F)
-{
-  	/* Assumes F is one larger than f */
-	double fs = 0;
-	for (int i = 0; i < f.size(); i++)
-	{
-		fs += exp(f[i]);
-		F[i].setlog(f[i]);		///< equivalent to F[i] = exp(f[i])
-  	}
-	F[f.size()].setlog(0); 			///< equivalent to F[f.size()] = 1
-	fs += 1;
-	for (int i = 0; i < F.size(); i++)
- 		F[i] /= fs;
 }
 
 /* This version uses the clonal frame version of the likelihood */
 void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename) {
-	int i, j, h = human.nrows();
+	int i, j;
 	/* Open the file */
 	ofstream out(filename);
 	string ffilename = string("f_") + string(filename);
@@ -320,12 +234,7 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	}
 	calc_R(r[use],R[use]);
 
-	int h = human.nrows();
-
 	/* Storage for likelihoods */
-	Vector< Matrix<mydouble> > LIKHI(2);
-	LIKHI[use] = Matrix<mydouble>(h,ng+1);		///< likelihood of each human isolate
-	LIKHI[notuse] = Matrix<mydouble>(h,ng+1);	///< likelihood of each human isolate
 	mydouble likelihood = known_source_lik6_composite(A[use],b[use],R[use]);
 
 	/* Proposal probabilities */
@@ -341,14 +250,6 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	double sigma_a = 0.5;							//	factor for normal proposal in MH change of a (case 1)
 	double sigma_f = 0.5;							//	factor for normal proposal in MH change of f (case 3)
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
-
-	/* Source probabilities */
-	Vector<double> ALPHA(ng-1, 0);			///< Mean of assignment proportion (logit scale)
-	Vector<double> TAU(ng-1, 1);			///< Std dev of assignment proportion (logit scale)
-	Vector<double> f(ng-1,0), f_prime(ng-1);	///< F values on the logit scale
-	Vector<mydouble> F(ng), F_prime(ng);		///< Probability of source
-
-	Vector<double> pLIKg(ng);						//	storage for g Gibbs step (case 4)
 
 	/* Output to file */
 	char tab = '\t';
@@ -367,8 +268,6 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	clock_t next = start + (clock_t)CLOCKS_PER_SEC;
 	cout << "Done 0 of " << niter << " iterations";
 
-	Matrix<mydouble> GLIK(h,ng,mydouble(0.0));
-
 	mydouble newlik, logalpha;
 	int iter, fiter, move, ctr = 0;
 	const int fniter = 20000;
@@ -378,34 +277,39 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	for(iter=0;iter<niter;iter++) {
 		if(iter>=burnin && (iter-burnin)%inc==0) {
 
-			/* Now dump LIKHI for this iteration.
+			/* Now dump the likelihoods for this iteration.
 			   Weird that this has nothing to do with the thinning */
 
-			/* Compute likelihood to compute LIKHI[use] */
-			/* Initialize the hyper-prior parameters */
-			for(j=0; j < f.size(); j++)
-				f[j] = 0;
-			/* Calculate our F's */
-			calc_logit_F(f,F);
-			mydouble flik = calc_lik6(LIKHI[use],A[use],a[use],b[use],R[use],F);
+			/* Compute likelihood of human isolate from each source */
+			Matrix<mydouble> phi(human.nrows(), ng);
+			{
+			  int j;
+			  for(int h = 0; h < human.nrows(); h++) {
+          // calculate the likelihood
+          for (int j = 0; j < ng; j++) {
+            punique = a[use][j][ng];              // NOTE USE of little a here!!!
+            phi[h][j] = likHi6(h,j,A[use],b[use],R[use]);
+          }
+			  }
+			}
 
-			stringstream s; s << iter;
-			std::string file = "phi_" + s.str() + "_" + filename;
-			ofstream o(file.c_str());
-			char tab = '\t';
-			o << "Isolate";
-			for (int i = 0; i < human.ncols(); i++)
-				o << tab << "Loci" << i;
-			for (int i = 0; i < ng; i++)
-				o << tab << "Source" << i;
-			o << "\n";
-			const int num_human = LIKHI[use].nrows();
-			for(int h = 0; h < num_human; h++) {
+		  /* Dump it to the file */
+		  stringstream s; s << iter;
+		  std::string file = "phi_" + s.str() + "_" + filename;
+		  ofstream o(file.c_str());
+		  char tab = '\t';
+		  o << "Isolate";
+		  for (int i = 0; i < human.ncols(); i++)
+		    o << tab << "Loci" << i;
+		  for (int i = 0; i < ng; i++)
+		    o << tab << "Source" << i;
+		  o << "\n";
+			for (int h = 0; h < human.nrows(); h++) {
 				o << h;
 				for (int i = 0; i < human.ncols(); i++)
 					o << tab << human[h][i];
-				for(int j = 0; j < ng; j++)
-					o << tab << LIKHI[use][h][j].LOG();
+				for (int j = 0; j < ng; j++)
+					o << tab << phi[h][j].LOG();
 				o << "\n";
 			}
 			o.close();
@@ -535,6 +439,8 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 				}
 			}
 		}
+
+		/* output traces of island model fit */
 		if((iter+1)%thin==0) {
 			out << (iter+1);
 			for(i=0;i<ng;i++) {
