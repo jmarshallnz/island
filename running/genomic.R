@@ -29,8 +29,8 @@ names(source_labels) <- source_label_map$Number
 alleles_to_impute <- max(c(suppressWarnings(as.numeric(sources$Imputed)), 0), na.rm=T)
 
 # model fitting control
-seeds     <- c(5,7,11,13,17)
-num_iters <- 20000
+seeds     <- c(5) #,7,11,13,17)
+num_iters <- 500
 thinning  <- 50
 
 human   <- "Human"
