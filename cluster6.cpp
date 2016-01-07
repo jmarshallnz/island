@@ -168,9 +168,10 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 
 	/* Create output matrices */
 	Matrix<double> out_mat(niter/thin+1, 1+ng*(ng+1)+ng+4); // iter, A, r, loglik, loglik2, logalpha, move
+  std::map<int, Matrix<double> > phi_out;
 
   /* Run model */
-	mcmc6f(alpha,beta,gamma,ran,niter,thin,out_mat,filename);
+	mcmc6f(alpha,beta,gamma,ran,niter,thin,out_mat,phi_out,filename);
 
 	/* Dump output to text file(s) */
 
@@ -194,6 +195,29 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, 
 	  out << std::endl;
 	}
 	out.close();
+
+	/* Dump it to the file */
+	for (std::map< int, Matrix<double> >::iterator i = phi_out.begin(); i != phi_out.end(); ++i) {
+  	std::stringstream s; s << i->first;
+  	std::string file = "phi_" + s.str() + "_" + filename;
+  	std::ofstream o(file.c_str());
+  	char tab = '\t';
+  	o << "Isolate";
+  	for (int i = 0; i < human.ncols(); i++)
+  	  o << tab << "Loci" << i;
+  	for (int i = 0; i < ng; i++)
+  	  o << tab << "Source" << i;
+  	o << "\n";
+  	for (int h = 0; h < human.nrows(); h++) {
+  	  o << h;
+  	  for (int i = 0; i < human.ncols(); i++)
+  	    o << tab << human[h][i];
+  	  for (int j = 0; j < ng; j++)
+  	    o << tab << i->second[h][j];
+  	  o << "\n";
+  	}
+  	o.close();
+	}
 }
 
 void append_traces(int iter, Matrix<double> &A, Matrix<double> &R, double lik1, double lik2, double logalpha, int move, Matrix<double> &traces, int trace_row) {
@@ -212,7 +236,7 @@ void append_traces(int iter, Matrix<double> &A, Matrix<double> &R, double lik1, 
 }
 
 /* This version uses the clonal frame version of the likelihood */
-void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, Matrix<double> &traces, const std::string &filename) {
+void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, Matrix<double> &traces, std::map<int, Matrix<double> > phi_out, const std::string &filename) {
 	precalc();
 	int i,j;
 	/* Initialize the Markov chain */
@@ -314,26 +338,13 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			  }
 			}
 
-		  /* Dump it to the file */
-		  std::stringstream s; s << iter;
-		  std::string file = "phi_" + s.str() + "_" + filename;
-		  std::ofstream o(file.c_str());
-		  char tab = '\t';
-		  o << "Isolate";
-		  for (int i = 0; i < human.ncols(); i++)
-		    o << tab << "Loci" << i;
-		  for (int i = 0; i < ng; i++)
-		    o << tab << "Source" << i;
-		  o << "\n";
+			/* Dump it to a matrix */
+			Matrix<double> phi_out_i(human.nrows(), ng);
 			for (int h = 0; h < human.nrows(); h++) {
-				o << h;
-				for (int i = 0; i < human.ncols(); i++)
-					o << tab << human[h][i];
-				for (int j = 0; j < ng; j++)
-					o << tab << phi[h][j].LOG();
-				o << "\n";
+			  for (int j = 0; j < ng; j++)
+			    phi_out_i[h][j] = phi[h][j].LOG();
 			}
-			o.close();
+			phi_out[iter] = phi_out_i;
 		}
 		else {
 			newlik = likelihood;

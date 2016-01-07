@@ -4,6 +4,7 @@
 #include "myutils.h"
 #include "mydouble.h"
 #include <fstream>
+#include <map>
 
 class Cluster {
 public:
@@ -45,7 +46,7 @@ public:
 
 	// mcmc6f infers M and R from seqs of known origin, and runs 100 side-chains to infer F given M and R
 	void mcmc6f(const double alpha, const double beta, const double gamma, myutils::Random &ran, const int niter, const int thin, const char* filename);
-	void mcmc6f(const double alpha, const double beta, const double gamma_, myutils::Random &ran, const int niter, const int thin, myutils::Matrix<double> &traces, const std::string &filename);
+	void mcmc6f(const double alpha, const double beta, const double gamma_, myutils::Random &ran, const int niter, const int thin, myutils::Matrix<double> &traces, std::map<int, myutils::Matrix<double> > phi_out, const std::string &filename);
 
 	~Cluster() {
 		if(init) {
