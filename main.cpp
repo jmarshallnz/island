@@ -21,7 +21,8 @@ int main(const int argc, const char* argv[]) {
 	cout << "Seed set to " << ran.getseed() << endl;
 
 	Cluster clust;
-	clust.open_all(train_file);
+	Matrix<int> isolates = clust.open_all(train_file);
+	clust.initialise(isolates);
 
 #if defined(_MODEL6)
 	std::cout << "Linked model" << std::endl;

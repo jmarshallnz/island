@@ -540,3 +540,13 @@ void Cluster::recalc_b(Matrix<double> &a, Matrix< Vector<double> > &b) {
     }
   }
 }
+
+int Cluster::multinom(Vector<double> &p, Random &ran) {
+  double U = ran.U();
+  int i;
+  for(i=0;i<p.size();i++) {
+    if((U-=p[i])<=0.0) break;
+  }
+  if(U>0.0) error("Problem in multinom");
+  return i;
+}

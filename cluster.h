@@ -40,7 +40,8 @@ public:
 		same = NULL;
 		ksame = NULL;
 	}
-	void open_all(const char* filename);
+  myutils::Matrix<int> open_all(const char* filename);
+  void initialise(myutils::Matrix<int> &isolates);
 
 	// mcmc6f infers M and R from seqs of known origin, and runs 100 side-chains to infer F given M and R
 	void mcmc6f(const double alpha, const double beta, const double gamma, myutils::Random &ran, const int niter, const int thin, const char* filename);
