@@ -69,12 +69,12 @@ for (year in 1:length(datasets)) {
   write.table(data, file=file.path(year_dir, island_in), sep="\t", row.names=F)
 
   # copy our isource executable there (as isource is braindead about output shit)
-  file.copy("../isource_genomic", year_dir, overwrite=TRUE)
+  file.copy("../isource", year_dir, overwrite=TRUE)
   current_dir <- getwd()
 
   for (seed in seeds) {
     island_seed_out <- paste0("output_", seed, ".txt")
-    command    <- paste0("./isource_genomic ", island_in, " ", island_seed_out, " ", num_iters, " ", thinning, " 1 -", seed)
+    command    <- paste0("./isource ", island_in, " ", island_seed_out, " ", num_iters, " ", thinning, " 1 -", seed)
 
     cat("---------------------------------------\n")
     cat("running island model with seed", seed, "\n")
