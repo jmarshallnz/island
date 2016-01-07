@@ -236,7 +236,7 @@ void append_traces(int iter, Matrix<double> &A, Matrix<double> &R, double lik1, 
 }
 
 /* This version uses the clonal frame version of the likelihood */
-void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, Matrix<double> &traces, std::map<int, Matrix<double> > phi_out) {
+void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, Matrix<double> &traces, std::map<int, Matrix<double> > &phi_out) {
 	precalc();
 	int i,j;
 	/* Initialize the Markov chain */
