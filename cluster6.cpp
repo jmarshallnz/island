@@ -165,28 +165,54 @@ void Cluster::precalc() {
 
 /* This version uses the clonal frame version of the likelihood */
 void Cluster::mcmc6f(const double alpha, const double beta, const double gamma, Random &ran, const int niter, const int thin, const char* filename) {
-	int i, j;
+
+	/* Create output matrices */
+	Matrix<double> out_mat(niter/thin+1, 1+ng*(ng+1)+ng+4); // iter, A, r, loglik, loglik2, logalpha, move
+
+  /* Run model */
+	mcmc6f(alpha,beta,gamma,ran,niter,thin,out_mat,filename);
+
+	/* Dump output to text file(s) */
+
 	/* Open the file */
 	std::ofstream out(filename);
-	std::string ffilename = std::string("f_") + std::string(filename);
-	std::ofstream o3(ffilename.c_str());
-	char tab = '\t';
 	out << "iter";
-	for(i=0;i<ng;i++) for(j=0;j<ng+1;j++) out << tab << "A[" << i << "," << j << "]";
-	for(i=0;i<ng;i++) out << tab << "r" << i;
+	const char tab = '\t';
+	for (int i = 0; i < ng; i++) for(int j = 0; j < ng+1; j++) out << tab << "A[" << i << "," << j << "]";
+	for (int i = 0; i < ng; i++) out << tab << "r" << i;
 	out << tab << "loglik";
 	out << tab << "loglik2";
 	out << tab << "logalpha";
 	out << tab << "move";
 	out << std::endl;
-	o3 << "iter";
-	for(i=0;i<ng;i++) o3 << tab << "f" << i;
-	o3 << std::endl;
-	return mcmc6f(alpha,beta,gamma,ran,niter,thin,out,o3,filename);
+
+	for (int i = 0; i < out_mat.nrows(); i++) {
+	  out << out_mat[i][0];
+	  for (int j = 1; j < out_mat.ncols(); j++) {
+	    out << tab << out_mat[i][j];
+	  }
+	  out << std::endl;
+	}
+	out.close();
+}
+
+void append_traces(int iter, Matrix<double> &A, Matrix<double> &R, double lik1, double lik2, double logalpha, int move, Matrix<double> &traces, int trace_row) {
+  int col = 0;
+  traces[trace_row][col++] = iter;
+  for (int i = 0; i < A.nrows(); i++) {
+    for (int j = 0; j < A.ncols(); j++)
+      traces[trace_row][col++] = A[i][j];
+  }
+  for (int i = 0; i < R.nrows(); i++)
+    traces[trace_row][col++] = R[i][0];
+  traces[trace_row][col++] = lik1;
+  traces[trace_row][col++] = lik2;
+  traces[trace_row][col++] = logalpha;
+  traces[trace_row][col++] = move;
 }
 
 /* This version uses the clonal frame version of the likelihood */
-void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, std::ofstream &out, std::ofstream &o3, const std::string &filename) {
+void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_, Random &ran, const int niter, const int thin, Matrix<double> &traces, const std::string &filename) {
 	precalc();
 	int i,j;
 	/* Initialize the Markov chain */
@@ -255,18 +281,9 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 	double sigma_f = 0.5;							//	factor for normal proposal in MH change of f (case 3)
 	double sigma_r = 0.5;							//	factor for normal proposal in MH change of r (case 5)
 
-	/* Output to file */
-	char tab = '\t';
-	out << 0;
-	for(i=0;i<ng;i++) {
-		for(j=0;j<ng+1;j++) out << tab << A[use][i][j];
-	}
-	for(i=0;i<ng;i++) out << tab << R[use][i][0];
-	out << tab << likelihood.LOG();
-	out << tab << likelihood.LOG();
-	out << tab << "0";
-	out << tab << "NA";
-	out << std::endl;
+	/* Trace output matrix */
+	int trace_row = 0;
+	append_traces(0, A[use], R[use], likelihood.LOG(), likelihood.LOG(), 0, NAN, traces, trace_row++);
 
 	clock_t start = clock(), current;
 	clock_t next = start + (clock_t)CLOCKS_PER_SEC;
@@ -444,29 +461,16 @@ void Cluster::mcmc6f(const double alpha, const double beta, const double gamma_,
 			}
 		}
 
-		/* output traces of island model fit */
-		if((iter+1)%thin==0) {
-			out << (iter+1);
-			for(i=0;i<ng;i++) {
-				for(j=0;j<ng+1;j++) out << tab << A[use][i][j];
-			}
-			for(i=0;i<ng;i++) out << tab << R[use][i][0];
-			out << tab << likelihood.LOG();
-			/* Check */
-			//mydouble newlik = known_source_lik6_composite(a[use],b[use],r[use]);
-			out << tab << newlik.LOG();
-			out << tab << logalpha.LOG();
-			out << tab << move;
-			out << std::endl;
-		}
+		/* output thinned traces of island model fit */
+		if((iter+1)%thin==0)
+		  append_traces(iter+1, A[use], R[use], likelihood.LOG(), newlik.LOG(), logalpha.LOG(), move, traces, trace_row++);
+
 		if((current=clock())>next) {
 		  std::cout << "\rDone " << (iter+1) << " of " << niter << " iterations in " << (double)(current-start)/CLOCKS_PER_SEC << " s " << std::flush;
 			next = current + (clock_t)CLOCKS_PER_SEC;
 		}
 	}
 	std::cout << std::endl;
-	out.close();
-	o3.close();
 }
 
 // helper stuff below here
