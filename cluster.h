@@ -7,7 +7,6 @@
 #include <map>
 
 class Cluster {
-public:
 	int ng;							// # groups
   myutils::Vector< myutils::Matrix<int> > MLST;		// haps for each
   myutils::Vector<int> size;				// size of each
@@ -19,9 +18,10 @@ public:
   myutils::Vector< myutils::Vector<mydouble> > freq;	// freq of STs in each group
   myutils::Vector< myutils::Vector<mydouble> > abun;	// abundance of STs in each group
   myutils::Matrix< myutils::Vector<double> > acount;	// acount[i][j][k] gives the count, in pop i, and locus j, of allele k
-	int nloc;						// # loci
+  mydouble one;
+
+  int nloc;						// # loci
 	bool init;
-	double A;
 
 	myutils::Matrix<int> human;				// those sampled from humans
 
@@ -30,18 +30,14 @@ public:
 	myutils::Matrix<bool> human_unique;
 	myutils::Vector< myutils::Matrix<bool> > beast_unique;
 	bool ****same;
-	mydouble one;
 	bool *****ksame;
 
 public:
 	Cluster() {
 		init = false;
 		nloc = 7;
-		A = 1.0e-6;
 		one = 1.0;
 	}
-	void open(const char* filename);
-	void open_human(const char* filename);
 	void open_all(const char* filename);
 
 	// mcmc6f infers M and R from seqs of known origin, and runs 100 side-chains to infer F given M and R
