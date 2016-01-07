@@ -37,6 +37,8 @@ public:
 		init = false;
 		nloc = 7;
 		one = 1.0;
+		same = NULL;
+		ksame = NULL;
 	}
 	void open_all(const char* filename);
 
@@ -54,6 +56,31 @@ public:
 				MLST[i].resize(0,0);
 			}
 		}
+		/* free memory */
+		for(int i = 0; i < human.nrows(); i++) {
+		  for(int ii = 0; ii < ng; ii++) {
+		    for(int jj = 0; jj < nST[ii]; jj++) {
+		      delete[] same[i][ii][jj];
+		    }
+		    delete[] same[i][ii];
+		  }
+		  delete[] same[i];
+		}
+		delete[] same;
+
+		for(int i = 0; i < ng; i++) {
+		  for(int j = 0; j < nST[i]; j++) {
+		    for(int ii = 0; ii < ng; ii++) {
+		      for(int jj = 0; jj < nST[ii]; jj++) {
+		        delete[] ksame[i][j][ii][jj];
+		      }
+		      delete[] ksame[i][j][ii];
+		    }
+		    delete[] ksame[i][j];
+		  }
+		  delete[] ksame[i];
+		}
+		delete[] ksame;
 	}
 
 	int multinom(myutils::Vector<double> &p, myutils::Random &ran);
