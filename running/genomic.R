@@ -17,7 +17,7 @@ db <- read.csv(db_file)
 
 source_file <- "4_source_imputed"
 
-sources <- read.csv(file.path("input", paste0(source_file, ".csv")), colClasses="character")
+sources <- read.csv(paste0(source_file, ".csv"), colClasses="character")
 source_map <- as.numeric(sources$Number)
 names(source_map) <- sources$DataSource
 
